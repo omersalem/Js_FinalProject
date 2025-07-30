@@ -19,7 +19,7 @@ const fetchPosts = async () => {
     // 3. Use await to wait for the response
     // We are requesting data from a placeholder API
     const response = await axios.get(
-      "https://tarmeezacademy.com/api/v1/posts?limit=200"
+      "https://tarmeezacademy.com/api/v1/posts?limit=20"
     );
 
     // 4. The data from the API is usually in `response.data`
@@ -44,7 +44,7 @@ const displayPosts = async () => {
   let posts = await fetchPosts();
   for (post of posts) {
     const postElement = document.createElement("div");
-    console.log(post.tags);
+
     postElement.innerHTML = `
 <div class="card col-9 mx-auto mt-5 shadow">
           <div
@@ -113,6 +113,7 @@ const login = async () => {
 
     console.log("Success:", response.data.token);
     localStorage.setItem("token", response.data.token);
+    localStorage.setItem("user", JSON.stringify(response.data.user));
 
     messageContainer.innerHTML = `<div class="alert alert-success"><strong>Success!</strong> Logged in </div>`;
     setTimeout(() => {
@@ -124,6 +125,7 @@ const login = async () => {
     const message = "Login successful";
     const type = "success";
     setAlert(message, type);
+    navBar();
   } catch (error) {
     console.error("Error:", error);
     messageContainer.innerHTML = `<div class="alert alert-danger"><strong>Login Failed:</strong> An unexpected error occurred.</div>`;
@@ -136,6 +138,7 @@ const login = async () => {
     const message = "login failed";
     const type = "danger";
     setAlert(message, type);
+    navBar();
   }
 
   // Clear the input fields
@@ -174,6 +177,27 @@ function setAlert(message, type) {
   setTimeout(() => {
     alertPlaceholder.innerHTML = "";
   }, 2000);
+}
+
+function navBar() {
+  if (localStorage.getItem("token")) {
+    console.log("token", localStorage.getItem("token"));
+
+    document.getElementById("login-btn").classList.add("d-none");
+    document.getElementById("register-btn").classList.add("d-none");
+    document.getElementById("logout-btn").classList.remove("d-none");
+  } else {
+    document.getElementById("login-btn").classList.remove("d-none");
+    document.getElementById("register-btn").classList.remove("d-none");
+    document.getElementById("logout-btn").classList.add("d-none");
+  }
+}
+navBar();
+
+function logout() {
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+  navBar();
 }
 
 // axios post login
