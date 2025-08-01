@@ -92,6 +92,53 @@ const displayPosts = async () => {
   }
 };
 displayPosts();
+const register = async () => {
+  const usernameInput = document.getElementById("username-reg");
+  const passwordInput = document.getElementById("password-reg");
+  const nameInput = document.getElementById("user-reg");
+  const emailInput = document.getElementById("email-reg");
+
+  const username = usernameInput.value;
+  const password = passwordInput.value;
+  const name = nameInput.value;
+  const email = emailInput.value;
+
+  try {
+    const response = await axios.post(
+      "https://tarmeezacademy.com/api/v1/register",
+      {
+        username: username,
+        password: password,
+        name: name,
+        email: email,
+      }
+    );
+
+    console.log("Success:", response.data.token);
+
+    localStorage.setItem("token", response.data.token);
+    localStorage.setItem("user", JSON.stringify(response.data.user));
+    console.log(localStorage.getItem("user"));
+    closeModal("registerModal");
+    const message = "Registration successful";
+    const type = "success";
+    setAlert(message, type);
+    navBar();
+  } catch (error) {
+    console.error("Error:", error.response.data.message);
+    setAlert(error.response.data.message, "danger");
+    navBar();
+    closeModal("registerModal");
+  }
+};
+const closeModal = (modalType) => {
+  setTimeout(() => {
+    const modal = bootstrap.Modal.getInstance(
+      document.getElementById(modalType)
+    );
+    modal.hide();
+  }, 500);
+};
 const login = async () => {
   const userInput = document.getElementById("user-input");
   const passwordInput = document.getElementById("password-input");
@@ -116,25 +163,16 @@ const login = async () => {
     localStorage.setItem("user", JSON.stringify(response.data.user));
 
     messageContainer.innerHTML = `<div class="alert alert-success"><strong>Success!</strong> Logged in </div>`;
-    setTimeout(() => {
-      const modal = bootstrap.Modal.getInstance(
-        document.getElementById("loginModal")
-      );
-      modal.hide();
-    }, 500);
+
     const message = "Login successful";
     const type = "success";
     setAlert(message, type);
     navBar();
+    closeModal("loginModal");
   } catch (error) {
     console.error("Error:", error);
     messageContainer.innerHTML = `<div class="alert alert-danger"><strong>Login Failed:</strong> An unexpected error occurred.</div>`;
-    setTimeout(() => {
-      const modal = bootstrap.Modal.getInstance(
-        document.getElementById("loginModal")
-      );
-      modal.hide();
-    }, 500);
+    closeModal("loginModal");
     const message = "login failed";
     const type = "danger";
     setAlert(message, type);
@@ -181,24 +219,32 @@ function setAlert(message, type) {
 
 function navBar() {
   if (localStorage.getItem("token")) {
+    const user = JSON.parse(localStorage.getItem("user"));
+    const username = user.username;
     console.log("token", localStorage.getItem("token"));
 
     document.getElementById("login-btn").classList.add("d-none");
     document.getElementById("register-btn").classList.add("d-none");
     document.getElementById("logout-btn").classList.remove("d-none");
+    document.getElementById("nav-username").innerHTML = username;
+    document.getElementById("nav-pic").src = user.profile_image;
+    document.getElementById("nav-username").classList.remove("d-none");
+    document.getElementById("nav-pic").classList.remove("d-none");
   } else {
+    document.getElementById("nav-username").classList.add("d-none");
+    document.getElementById("nav-pic").classList.add("d-none");
     document.getElementById("login-btn").classList.remove("d-none");
     document.getElementById("register-btn").classList.remove("d-none");
     document.getElementById("logout-btn").classList.add("d-none");
   }
 }
-navBar();
 
 function logout() {
   localStorage.removeItem("token");
   localStorage.removeItem("user");
   navBar();
 }
+navBar();
 
 // axios post login
 

@@ -15,13 +15,95 @@
     </style>
   </head>
   <body>
-    <!-- Alert -->
+    <!------------------------------------ Alert Start --------------------------------------------------->
     <div
+      class="show fade"
       id="liveAlertPlaceholder"
       style="z-index: 100; position: fixed; width: 100%; top: 0; left: 0"
     ></div>
 
-    <!-- Alert End -->
+    <!----------------------------------- Alert End -------------------------------------------------------->
+
+    <!----------------------------- Register Modal Start ---------------------------------------------------->
+    <div
+      class="modal fade"
+      id="registerModal"
+      tabindex="-1"
+      aria-labelledby="registerModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 shadow">
+          <div class="modal-header p-4 border-bottom-0">
+            <!-- Modal Title -->
+            <h1 class="modal-title fs-4 fw-bold" id="registerModalLabel">
+              Create Your Account
+            </h1>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body p-4 pt-0">
+            <!-- Registration form -->
+            <form>
+              <div class="form-floating mb-3">
+                <input
+                  type="text"
+                  class="form-control"
+                  id="username-reg"
+                  placeholder="Username"
+                />
+                <label for="floatingUsername">Username</label>
+              </div>
+              <div class="form-floating mb-3">
+                <input
+                  type="text"
+                  class="form-control rounded-3"
+                  id="user-reg"
+                  placeholder="Full Name"
+                />
+                <label for="floatingName">Name</label>
+              </div>
+              <div class="form-floating mb-3">
+                <input
+                  type="email"
+                  class="form-control rounded-3"
+                  id="email-reg"
+                  placeholder="name@example.com"
+                  autocomplete="email"
+                />
+                <label for="floatingEmail">Email address</label>
+              </div>
+              <div class="form-floating mb-3">
+                <input
+                  type="password"
+                  class="form-control rounded-3"
+                  id="password-reg"
+                  placeholder="Password"
+                  autocomplete="new-password"
+                />
+                <label for="floatingPassword">Password</label>
+              </div>
+              <button
+                class="w-100 mb-2 btn btn-lg rounded-3 btn-primary"
+                id="register-reg"
+                type="button"
+                onclick="register()"
+              >
+                Register
+              </button>
+              <small class="text-body-secondary"
+                >By clicking Register, you agree to the terms of use.</small
+              >
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!----------------------------- Register Modal End--------------------------------------- -->
     <!-- Login Modal -->
 
     <div
@@ -62,6 +144,8 @@
                     class="form-control"
                     id="user-input"
                     placeholder="yourusername"
+                    value="omersalem2008"
+                    autocomplete="username"
                   />
                   <label for="floatingUsername">Username</label>
                 </div>
@@ -78,6 +162,8 @@
                     class="form-control"
                     id="password-input"
                     placeholder="Password"
+                    value="123456"
+                    autocomplete="current-password"
                   />
                   <label for="floatingPassword">Password</label>
                 </div>
@@ -135,7 +221,19 @@
                   <a class="nav-link" href="#">Profile</a>
                 </li>
               </ul>
-              <div class="d-flex w-100 justify-content-end">
+              <div id="user-info" class="d-flex w-100 justify-content-end">
+                <span>
+                  <img
+                    id="nav-pic"
+                    style="width: 40px; height: 40px"
+                    src=""
+                    class="rounded-circle avatar d-none"
+                    alt=""
+                  />
+                </span>
+                <span id="nav-username" class="fw-bold m-2 d-none"
+                  ></span
+                >
                 <button
                   type="button"
                   onclick="openLoginModal()"
@@ -150,6 +248,8 @@
                   type="button"
                   id="register-btn"
                   class="btn btn-outline-success"
+                  data-bs-toggle="modal"
+                  data-bs-target="#registerModal"
                 >
                   Register
                 </button>
@@ -157,8 +257,6 @@
                   type="button"
                   onclick="logout()"
                   class="btn btn-outline-success me-3 d-none"
-                  
-                  
                   id="logout-btn"
                 >
                   LogOut
