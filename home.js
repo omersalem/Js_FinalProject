@@ -131,6 +131,41 @@ const register = async () => {
     closeModal("registerModal");
   }
 };
+const createPost = async () => {
+  const titleInput = document.getElementById("postTitle");
+  const bodyInput = document.getElementById("postContent");
+  const imageInput = document.getElementById("postImage");
+
+  const title = titleInput.value;
+  const body = bodyInput.value;
+  const image = imageInput.files[0];
+// here we will use formdata to send the image to the server and json is not 
+// used to send the image only text data is sent by json
+  const formData = new FormData();
+  formData.append("title", title);
+  formData.append("body", body);
+  formData.append("image", image);
+  const url = "https://tarmeezacademy.com/api/v1/posts";
+  const token = localStorage.getItem("token");
+  const config = {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  };
+
+  try {
+    const response = await axios.post(url, formData, config);
+  } catch (error) {
+    console.error("Error:", error);
+  }
+
+  titleInput.value = "";
+  bodyInput.value = "";
+  imageInput.value = "";
+  closeModal("createPostModal");
+  displayPosts();
+};
+
 const closeModal = (modalType) => {
   setTimeout(() => {
     const modal = bootstrap.Modal.getInstance(
@@ -230,12 +265,14 @@ function navBar() {
     document.getElementById("nav-pic").src = user.profile_image;
     document.getElementById("nav-username").classList.remove("d-none");
     document.getElementById("nav-pic").classList.remove("d-none");
+    document.getElementById("add-post").classList.remove("d-none");
   } else {
     document.getElementById("nav-username").classList.add("d-none");
     document.getElementById("nav-pic").classList.add("d-none");
     document.getElementById("login-btn").classList.remove("d-none");
     document.getElementById("register-btn").classList.remove("d-none");
     document.getElementById("logout-btn").classList.add("d-none");
+    document.getElementById("add-post").classList.add("d-none");
   }
 }
 

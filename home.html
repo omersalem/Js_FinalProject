@@ -6,6 +6,11 @@
     <title>Document</title>
     <link
       rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+
+    <link
+      rel="stylesheet"
       href="node_modules/bootstrap/dist/css/bootstrap.min.css"
     />
     <style>
@@ -15,6 +20,15 @@
     </style>
   </head>
   <body>
+    <div
+      role="button"
+      class="position-fixed bottom-0 mb-5 me-5 end-0 fs-1"
+      data-bs-toggle="modal"
+      data-bs-target="#createPostModal"
+    >
+      <i id="add-post" class="fa-solid fa-circle-plus" size="lg"></i>
+    </div>
+
     <!------------------------------------ Alert Start --------------------------------------------------->
     <div
       class="show fade"
@@ -104,7 +118,73 @@
       </div>
     </div>
     <!----------------------------- Register Modal End--------------------------------------- -->
-    <!-- Login Modal -->
+
+    <!----------------------------------- Creat Post Modal --------------------------------------->
+    <div
+      class="modal fade"
+      id="createPostModal"
+      tabindex="-1"
+      aria-labelledby="createPostModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 shadow">
+          <div class="modal-header p-4 border-bottom-0">
+            <!-- Modal Title -->
+            <h1 class="modal-title fs-4 fw-bold" id="createPostModalLabel">
+              Create a New Post
+            </h1>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body p-4 pt-0">
+            <!-- Create Post form -->
+            <form>
+              <div class="mb-3">
+                <label for="postImage" class="form-label">Post Image</label>
+                <input
+                  class="form-control rounded-3"
+                  type="file"
+                  id="postImage"
+                />
+              </div>
+              <div class="form-floating mb-3">
+                <input
+                  type="text"
+                  class="form-control rounded-3"
+                  id="postTitle"
+                  placeholder="Post Title"
+                />
+                <label for="postTitle">Title</label>
+              </div>
+              <div class="form-floating mb-3">
+                <textarea
+                  class="form-control rounded-3"
+                  placeholder="Write your content here..."
+                  id="postContent"
+                  style="height: 150px"
+                ></textarea>
+                <label for="postContent">Content</label>
+              </div>
+              <button
+                class="w-100 mb-2 btn btn-lg rounded-3 btn-success"
+                type="button"
+                onclick="createPost()"
+              >
+                Create Post
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!----------------------------------- Creat Post Modal End --------------------------------------->
+
+    <!------------------------------- Login Modal ---------------------------------------------->
 
     <div
       class="modal fade"
@@ -231,9 +311,7 @@
                     alt=""
                   />
                 </span>
-                <span id="nav-username" class="fw-bold m-2 d-none"
-                  ></span
-                >
+                <span id="nav-username" class="fw-bold m-2 d-none"></span>
                 <button
                   type="button"
                   onclick="openLoginModal()"
