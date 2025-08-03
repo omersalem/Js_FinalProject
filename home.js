@@ -1,4 +1,4 @@
-//store the html elements in variables
+// Variables
 const avatar = document.querySelector(".avatar-img");
 const main_image = document.querySelector(".content-img");
 const username = document.querySelector(".username");
@@ -7,13 +7,22 @@ const title = document.querySelector(".card-title");
 const text = document.querySelector(".card-text");
 const comments_count = document.querySelector(".comments-count");
 const cards = document.querySelector("#posts");
+const loader = document.getElementById("loader");
+let users = [];
 
-// 1. Import axios
+// Loader Functions
+const showLoader = () => {
+  loader.classList.add("show");
+};
 
-// This will hold our fetched data
+// Function to hide the loader
+const hideLoader = () => {
+  loader.classList.remove("show");
+};
+
+// Posts
 let posts = [];
 
-// 2. Create an async function to get the data
 const fetchPosts = async () => {
   try {
     // 3. Use await to wait for the response
@@ -39,6 +48,7 @@ const fetchPosts = async () => {
   }
 };
 
+
 const displayPosts = async () => {
   cards.innerHTML = "";
   let posts = await fetchPosts();
@@ -52,7 +62,7 @@ const displayPosts = async () => {
           >
             <div class="d-flex align-items-center">
               <img
-                src="./profile-pics/1.jpg"
+                src="${post.author.profile_image}"
                 class="rounded-circle avatar me-2 avatar-img"
                 alt="User Avatar"
                 style="width: 40px; height: 40px"
@@ -92,27 +102,31 @@ const displayPosts = async () => {
   }
 };
 displayPosts();
+
+// Register
 const register = async () => {
   const usernameInput = document.getElementById("username-reg");
   const passwordInput = document.getElementById("password-reg");
   const nameInput = document.getElementById("user-reg");
   const emailInput = document.getElementById("email-reg");
+  const imageInput = document.getElementById("imageReg");
 
   const username = usernameInput.value;
   const password = passwordInput.value;
   const name = nameInput.value;
   const email = emailInput.value;
+  const image = imageInput.files[0];
 
   try {
-    const response = await axios.post(
-      "https://tarmeezacademy.com/api/v1/register",
-      {
-        username: username,
-        password: password,
-        name: name,
-        email: email,
-      }
-    );
+    const formData = new FormData();
+    formData.append("username", username);
+    formData.append("password", password);
+    formData.append("name", name);
+    formData.append("email", email);
+    formData.append("image", image);
+    const url = "https://tarmeezacademy.com/api/v1/register";
+
+    const response = await axios.post(url, formData);
 
     console.log("Success:", response.data.token);
 
@@ -131,7 +145,10 @@ const register = async () => {
     closeModal("registerModal");
   }
 };
+// createPost Function
 const createPost = async () => {
+  showLoader(); // Show loader at the beginning
+
   const titleInput = document.getElementById("postTitle");
   const bodyInput = document.getElementById("postContent");
   const imageInput = document.getElementById("postImage");
@@ -139,8 +156,23 @@ const createPost = async () => {
   const title = titleInput.value;
   const body = bodyInput.value;
   const image = imageInput.files[0];
-// here we will use formdata to send the image to the server and json is not 
-// used to send the image only text data is sent by json
+
+  // Client-side image size validation
+  const MAX_IMAGE_SIZE_MB = 5;
+  const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024; // 5MB
+
+  if (image && image.size > MAX_IMAGE_SIZE_BYTES) {
+    setAlert(
+      `Image size exceeds the maximum limit of ${MAX_IMAGE_SIZE_MB}MB. Please choose a smaller image.`,
+      "danger"
+    );
+    closeModal("createPostModal");
+    hideLoader(); // Hide loader if validation fails
+    return; // Stop the function execution
+  }
+
+  // here we will use formdata to send the image to the server and json is not
+  // used to send the image only text data is sent by json
   const formData = new FormData();
   formData.append("title", title);
   formData.append("body", body);
@@ -155,8 +187,28 @@ const createPost = async () => {
 
   try {
     const response = await axios.post(url, formData, config);
+    setAlert("Post created successfully", "success");
+    displayPosts();
   } catch (error) {
-    console.error("Error:", error);
+    console.error("Error during post creation:", error);
+    let errorMessage = "An unexpected error occurred.";
+    if (error.response) {
+      if (error.response.status === 413) {
+        errorMessage = "Image too large. Please upload a smaller image.";
+      } else if (error.response.data && error.response.data.message) {
+        errorMessage = error.response.data.message;
+      } else {
+        errorMessage = `Server error: ${error.response.status}`;
+      }
+    } else if (error.request) {
+      errorMessage = "Network error: No response received from server.";
+    } else {
+      errorMessage = error.message;
+    }
+    setAlert(errorMessage, "danger");
+    closeModal("registerModal");
+  } finally {
+    hideLoader(); // Hide loader after success or error
   }
 
   titleInput.value = "";
@@ -166,6 +218,7 @@ const createPost = async () => {
   displayPosts();
 };
 
+// Close Modal
 const closeModal = (modalType) => {
   setTimeout(() => {
     const modal = bootstrap.Modal.getInstance(
@@ -174,6 +227,8 @@ const closeModal = (modalType) => {
     modal.hide();
   }, 500);
 };
+
+// Login Function
 const login = async () => {
   const userInput = document.getElementById("user-input");
   const passwordInput = document.getElementById("password-input");
@@ -220,6 +275,8 @@ const login = async () => {
 
   // Close the login modal
 };
+
+// Login
 function openLoginModal() {
   const messageContainer = document.getElementById("message-container");
   messageContainer.innerHTML = "";
@@ -230,6 +287,7 @@ addEventListener("keydown", (event) => {
   }
 });
 
+// Alert
 function setAlert(message, type) {
   const alertPlaceholder = document.getElementById("liveAlertPlaceholder");
 
@@ -252,6 +310,7 @@ function setAlert(message, type) {
   }, 2000);
 }
 
+// Navbar Function
 function navBar() {
   if (localStorage.getItem("token")) {
     const user = JSON.parse(localStorage.getItem("user"));
@@ -283,6 +342,7 @@ function logout() {
 }
 navBar();
 
+// Logout
 // axios post login
 
 // loginForm.addEventListener('submit', async (event) => {
