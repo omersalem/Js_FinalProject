@@ -9,26 +9,36 @@ const comments_count = document.querySelector(".comments-count");
 const cards = document.querySelector("#posts");
 const loader = document.getElementById("loader");
 let users = [];
-
-// Loader Functions
-const showLoader = () => {
-  loader.classList.add("show");
-};
-
-// Function to hide the loader
-const hideLoader = () => {
-  loader.classList.remove("show");
-};
+const baseUrl = "https://tarmeezacademy.com/api/v1";
+let currentPage = 1;
 
 // Posts
 let posts = [];
 
-const fetchPosts = async () => {
+window.addEventListener("scroll", () => {
+  console.log("scrolling");
+
+  // end of page here is used to check if the user has scrolled to the end of the page
+  // and returns true if the user has scrolled to the end of the page
+
+  const endofPage =
+    window.scrollY + window.innerHeight + 1 >=
+    document.documentElement.scrollHeight;
+  if (endofPage) {
+    displayPosts();
+  }
+});
+
+//Fetch Tags
+
+// Fetch Posts
+
+const fetchPosts = async (currentPage = 1) => {
   try {
     // 3. Use await to wait for the response
     // We are requesting data from a placeholder API
     const response = await axios.get(
-      "https://tarmeezacademy.com/api/v1/posts?limit=20"
+      `${baseUrl}/posts?limit=10&page=${currentPage}`
     );
 
     // 4. The data from the API is usually in `response.data`
@@ -40,7 +50,7 @@ const fetchPosts = async () => {
     if (posts.data && posts.data.length > 0) {
       console.log("First post image:", posts.data[0].image);
     }
-    return posts.data;
+    return posts;
   } catch (error) {
     // 5. If an error occurs, the catch block will run
     console.error("Error fetching data:", error);
@@ -48,33 +58,53 @@ const fetchPosts = async () => {
   }
 };
 
-
 const displayPosts = async () => {
-  cards.innerHTML = "";
-  let posts = await fetchPosts();
+  // cards.innerHTML = "";
+  currentPage = currentPage + 1;
+
+  let response = await fetchPosts(currentPage);
+  let posts = response.data;
+  let lastPage = response.meta.last_page;
+  if (currentPage > lastPage) {
+    return;
+  }
   for (post of posts) {
+    const profileImage =
+      post.author.profile_image && typeof post.author.profile_image === "string"
+        ? post.author.profile_image
+        : "./profile-pics/1.jpg";
     const postElement = document.createElement("div");
+    postElement.className = "card"; // Add a class for styling
+    const tags = await fetchTags(post.id);
+
+    postElement.dataset.id = post.id;
+    const postId = postElement.dataset.id;
 
     postElement.innerHTML = `
-<div class="card col-9 mx-auto mt-5 shadow">
+<div class="card col-9 mx-auto mt-5 mb-5 w-100 shadow">
           <div
-            class="card-header bg-white py-3 d-flex justify-content-between align-items-center"
+            class="card-header bg-white py-3 d-flex justify-content-between position-relative  align-items-center"
           >
-            <div class="d-flex align-items-center">
+            <div class="d-flex align-items-center ">
               <img
-                src="${post.author.profile_image}"
+                src="${profileImage}"
                 class="rounded-circle avatar me-2 avatar-img"
                 alt="User Avatar"
                 style="width: 40px; height: 40px"
               />
               <span class="fw-bold username">@${post.author.username}</span>
+              
+              
             </div>
-            <a href="#" class="text-secondary"
-              ><i class="bi bi-three-dots"></i
-            ></a>
+            <div id="edit-container" class="d-flex justify-content-end  w-100 ">
+              <button type="button" id="editPost" class="btn btn-outline-success" onclick="editPost(${encodeURIComponent(
+                JSON.stringify(post)
+              )})">edit</button>
+              </div>
+           
           </div>
 
-          <div class="card-body  d-flex flex-column align-content-center">
+          <div class="card-body  d-flex flex-column align-content-center" onclick="showComments(${postId})">
             <img
               src="${post.image}"
               class="card-img-top img-fluid  content-img"
@@ -88,63 +118,37 @@ const displayPosts = async () => {
               ${post.body}
             </p>
           </div>
-          <div class="card-footer bg-white text-muted">
+          <div class="card-footer bg-white d-flex justify-content-between text-muted">
             <a href="#" class="text-decoration-none text-muted">
-              <i class="bi bi-chat-left-text"></i> (${post.comments_count}) Comments
+              <i class="bi bi-chat-left-text"></i> (${
+                post.comments_count
+              }) Comments
             </a>
+            <div class="tags"></div>
           </div>
   </div>
-
-
-        
 `;
+    const tagsContainer = postElement.querySelector(".tags");
+    for (const tag of tags) {
+      const tagElement = document.createElement("span");
+      tagElement.className =
+        "bg-success rounded-pill shadow-sm fs-5 p-2 text-danger";
+      tagElement.textContent = tag.name;
+      tagsContainer.appendChild(tagElement);
+    }
     cards.appendChild(postElement);
   }
 };
-displayPosts();
 
-// Register
-const register = async () => {
-  const usernameInput = document.getElementById("username-reg");
-  const passwordInput = document.getElementById("password-reg");
-  const nameInput = document.getElementById("user-reg");
-  const emailInput = document.getElementById("email-reg");
-  const imageInput = document.getElementById("imageReg");
-
-  const username = usernameInput.value;
-  const password = passwordInput.value;
-  const name = nameInput.value;
-  const email = emailInput.value;
-  const image = imageInput.files[0];
-
-  try {
-    const formData = new FormData();
-    formData.append("username", username);
-    formData.append("password", password);
-    formData.append("name", name);
-    formData.append("email", email);
-    formData.append("image", image);
-    const url = "https://tarmeezacademy.com/api/v1/register";
-
-    const response = await axios.post(url, formData);
-
-    console.log("Success:", response.data.token);
-
-    localStorage.setItem("token", response.data.token);
-    localStorage.setItem("user", JSON.stringify(response.data.user));
-    console.log(localStorage.getItem("user"));
-    closeModal("registerModal");
-    const message = "Registration successful";
-    const type = "success";
-    setAlert(message, type);
-    navBar();
-  } catch (error) {
-    console.error("Error:", error.response.data.message);
-    setAlert(error.response.data.message, "danger");
-    navBar();
-    closeModal("registerModal");
-  }
+let showComments = (id) => {
+  // Redirect to the details page with the correct ID
+  window.location.href = `details.html?id=${id}`;
 };
+
+document.addEventListener("DOMContentLoaded", () => {
+  displayPosts();
+});
+
 // createPost Function
 const createPost = async () => {
   showLoader(); // Show loader at the beginning
@@ -188,6 +192,8 @@ const createPost = async () => {
   try {
     const response = await axios.post(url, formData, config);
     setAlert("Post created successfully", "success");
+    cards.innerHTML = "";
+    currentPage = 0;
     displayPosts();
   } catch (error) {
     console.error("Error during post creation:", error);
@@ -215,132 +221,30 @@ const createPost = async () => {
   bodyInput.value = "";
   imageInput.value = "";
   closeModal("createPostModal");
-  displayPosts();
 };
 
-// Close Modal
-const closeModal = (modalType) => {
-  setTimeout(() => {
-    const modal = bootstrap.Modal.getInstance(
-      document.getElementById(modalType)
-    );
-    modal.hide();
-  }, 500);
-};
-
-// Login Function
-const login = async () => {
-  const userInput = document.getElementById("user-input");
-  const passwordInput = document.getElementById("password-input");
-  const messageContainer = document.getElementById("message-container");
-
-  const username = userInput.value;
-  const password = passwordInput.value;
-
-  messageContainer.innerHTML = `<div class="alert alert-info">Attempting to log in...</div>`;
-
+const fetchTags = async (id) => {
   try {
-    const response = await axios.post(
-      "https://tarmeezacademy.com/api/v1/login",
-      {
-        username: username,
-        password: password,
-      }
-    );
-
-    console.log("Success:", response.data.token);
-    localStorage.setItem("token", response.data.token);
-    localStorage.setItem("user", JSON.stringify(response.data.user));
-
-    messageContainer.innerHTML = `<div class="alert alert-success"><strong>Success!</strong> Logged in </div>`;
-
-    const message = "Login successful";
-    const type = "success";
-    setAlert(message, type);
-    navBar();
-    closeModal("loginModal");
+    const response = await axios.get(`${baseUrl}/posts/${id}`);
+    const tags = response.data.data.tags;
+    console.log(tags);
+    return tags;
   } catch (error) {
-    console.error("Error:", error);
-    messageContainer.innerHTML = `<div class="alert alert-danger"><strong>Login Failed:</strong> An unexpected error occurred.</div>`;
-    closeModal("loginModal");
-    const message = "login failed";
-    const type = "danger";
-    setAlert(message, type);
-    navBar();
+    console.error("Error fetching tags:", error);
+    return [];
   }
-
-  // Clear the input fields
-  userInput.value = "";
-  passwordInput.value = "";
-
-  // Close the login modal
 };
 
-// Login
-function openLoginModal() {
-  const messageContainer = document.getElementById("message-container");
-  messageContainer.innerHTML = "";
-}
-addEventListener("keydown", (event) => {
-  if (event.key === "Enter") {
-    login();
-  }
-});
-
-// Alert
-function setAlert(message, type) {
-  const alertPlaceholder = document.getElementById("liveAlertPlaceholder");
-
-  const alert = (message, type) => {
-    const wrapper = document.createElement("div");
-    wrapper.innerHTML = [
-      `<div class="alert alert-${type} alert-dismissible" role="alert">`,
-      `   <div>${message}</div>`,
-      '   <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>',
-      "</div>",
-    ].join("");
-
-    alertPlaceholder.append(wrapper);
-  };
-
-  alert(`${message}`, `${type}`);
-
-  setTimeout(() => {
-    alertPlaceholder.innerHTML = "";
-  }, 2000);
-}
-
-// Navbar Function
-function navBar() {
-  if (localStorage.getItem("token")) {
-    const user = JSON.parse(localStorage.getItem("user"));
-    const username = user.username;
-    console.log("token", localStorage.getItem("token"));
-
-    document.getElementById("login-btn").classList.add("d-none");
-    document.getElementById("register-btn").classList.add("d-none");
-    document.getElementById("logout-btn").classList.remove("d-none");
-    document.getElementById("nav-username").innerHTML = username;
-    document.getElementById("nav-pic").src = user.profile_image;
-    document.getElementById("nav-username").classList.remove("d-none");
-    document.getElementById("nav-pic").classList.remove("d-none");
-    document.getElementById("add-post").classList.remove("d-none");
-  } else {
-    document.getElementById("nav-username").classList.add("d-none");
-    document.getElementById("nav-pic").classList.add("d-none");
-    document.getElementById("login-btn").classList.remove("d-none");
-    document.getElementById("register-btn").classList.remove("d-none");
-    document.getElementById("logout-btn").classList.add("d-none");
-    document.getElementById("add-post").classList.add("d-none");
-  }
-}
-
-function logout() {
-  localStorage.removeItem("token");
-  localStorage.removeItem("user");
-  navBar();
-}
-navBar();
+let editPost = (postObject) => {
+  let post = JSON.parse(decodeURIComponent(postObject));
+  const modal = new bootstrap.Modal(document.getElementById("createPostModal"));
+  document.getElementById("postTitle").value = post.title;
+  document.getElementById("postContent").value = post.body;
+  document.getElementById("createPostModalLabel").textContent = "Edit Post";
+  document.querySelector("#createPostModal button[type='button']").textContent =
+    "Update Post";
+  modal.show();
+};
 
 // Logout
 // axios post login
