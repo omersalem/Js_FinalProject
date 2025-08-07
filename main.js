@@ -97,10 +97,11 @@ const login = async () => {
         password: password,
       }
     );
+    const user = response.data.user;
 
     localStorage.setItem("token", response.data.token);
-    localStorage.setItem("user", JSON.stringify(response.data.user));
-
+    localStorage.setItem("user", JSON.stringify(user));
+    
     if (messageContainer) {
       messageContainer.innerHTML = `<div class="alert alert-success"><strong>Success!</strong> Logged in </div>`;
     }

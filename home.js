@@ -8,6 +8,8 @@ const text = document.querySelector(".card-text");
 const comments_count = document.querySelector(".comments-count");
 const cards = document.querySelector("#posts");
 const loader = document.getElementById("loader");
+const updateButton = document.querySelector(".update-btn");
+let editButton = document.getElementById("editPost");
 let users = [];
 const baseUrl = "https://tarmeezacademy.com/api/v1";
 let currentPage = 1;
@@ -54,6 +56,7 @@ const fetchPosts = async (currentPage = 1) => {
   } catch (error) {
     // 5. If an error occurs, the catch block will run
     console.error("Error fetching data:", error);
+    setAlert("Error fetching posts, please try again later.", "danger");
     return []; // Return an empty array on error
   }
 };
@@ -63,6 +66,9 @@ const displayPosts = async () => {
   currentPage = currentPage + 1;
 
   let response = await fetchPosts(currentPage);
+  if (!response.meta) {
+    return;
+  }
   let posts = response.data;
   let lastPage = response.meta.last_page;
   if (currentPage > lastPage) {
@@ -79,6 +85,13 @@ const displayPosts = async () => {
 
     postElement.dataset.id = post.id;
     const postId = postElement.dataset.id;
+    const user = JSON.parse(localStorage.getItem("user"));
+    let editButton = "";
+    if (user && user.id === post.author.id) {
+      editButton = `<button type="button" id="editPost" class="btn btn-outline-success" onclick="editPost('${encodeURIComponent(
+        JSON.stringify(post)
+      )}')">edit</button>`;
+    }
 
     postElement.innerHTML = `
 <div class="card col-9 mx-auto mt-5 mb-5 w-100 shadow">
@@ -97,9 +110,7 @@ const displayPosts = async () => {
               
             </div>
             <div id="edit-container" class="d-flex justify-content-end  w-100 ">
-              <button type="button" id="editPost" class="btn btn-outline-success" onclick="editPost('${encodeURIComponent(
-                JSON.stringify(post)
-              )}')">edit</button>
+              ${editButton}
               </div>
            
           </div>
@@ -120,9 +131,7 @@ const displayPosts = async () => {
           </div>
           <div class="card-footer bg-white d-flex justify-content-between text-muted">
             <a href="#" class="text-decoration-none text-muted">
-              <i class="bi bi-chat-left-text"></i> (${
-                post.comments_count
-              }) Comments
+              <i class="bi bi-chat-left-text"></i> (${post.comments_count}) Comments
             </a>
             <div class="tags"></div>
           </div>
@@ -237,20 +246,18 @@ const fetchTags = async (id) => {
 
 let editPost = (postObject) => {
   let post = JSON.parse(decodeURIComponent(postObject));
-  const modal = new bootstrap.Modal(
-    document.getElementById("updatePostModal")
-  );
+  const modal = new bootstrap.Modal(document.getElementById("updatePostModal"));
+
   document.getElementById("updatepostTitle").value = post.title;
   document.getElementById("updatepostContent").value = post.body;
   document.getElementById("updatePostModalLabel").textContent = "Edit Post";
   const postId = post.id;
-  const editButton = document.querySelector(".update-btn");
-  editButton.id = postId;
+
+  editButton.id = post.author.id;
   modal.show();
 };
 
 const updatePost = async () => {
-  showLoader(); // Show loader at the beginning
   const titleInput = document.getElementById("updatepostTitle");
   const bodyInput = document.getElementById("updatepostContent");
   const imageInput = document.getElementById("updatepostImage");
@@ -269,53 +276,55 @@ const updatePost = async () => {
       "danger"
     );
     closeModal("updatePostModal");
-    hideLoader(); // Hide loader if validation fails
 
     return; // Stop the function execution
   }
-}
+  // here we will use formdata to send the image to the server and json is not
+  // used to send the image only text data is sent by json
+  const formData = new FormData();
+  formData.append("title", title);
+  formData.append("body", body);
+  formData.append("image", image);
+  formData.append("_method", "PUT"); // Use PUT method for update so when the api is laravel based we write psot instead of put
+  // in the await axios.post(url, formData, config); but we add _method: "PUT" to the formData
+  const url = `https://tarmeezacademy.com/api/v1/posts/${updateButton.id}`;
+  const token = localStorage.getItem("token");
+  const config = {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  };
 
-// Logout
-// axios post login
+  try {
+    const response = await axios.post(url, formData, config);
+    setAlert("Post updated successfully", "success");
+    cards.innerHTML = "";
+    currentPage = 0;
+    displayPosts();
+  } catch (error) {
+    console.error("Error during post update:", error);
+    let errorMessage = "An unexpected error occurred.";
+    if (error.response) {
+      if (error.response.status === 413) {
+        errorMessage = "Image too large. Please upload a smaller image.";
+      } else if (error.response.data && error.response.data.message) {
+        errorMessage = error.response.data.message;
+      } else {
+        errorMessage = `Server error: ${error.response.status}`;
+      }
+    } else if (error.request) {
+      errorMessage = "Network error: No response received from server.";
+    } else {
+      errorMessage = error.message;
+    }
+    setAlert(errorMessage, "danger");
+    closeModal("updatePostModal");
+  } finally {
+    hideLoader(); // Hide loader after success or error
+  }
 
-// loginForm.addEventListener('submit', async (event) => {
-//             // Prevent the default form submission behavior (which reloads the page)
-//             event.preventDefault();
-
-//             // Clear any previous messages
-//             messageContainer.innerHTML = '';
-
-//             // Get the values from the input fields
-//             const username = document.getElementById('floatingUsername').value;
-//             const password = document.getElementById('floatingPassword').value;
-
-//             // Show a loading message
-//             messageContainer.innerHTML = `<div class="alert alert-info">Attempting to log in...</div>`;
-
-//             try {
-//                 // --- AXIOS POST REQUEST ---
-//                 // We send a POST request to a sample API endpoint.
-//                 // In a real application, you would replace this URL with your own backend API endpoint.
-//                 // The second argument to axios.post is the data payload (the object we want to send).
-//                 const response = await axios.post('https://reqres.in/api/login', {
-//                     email: username, // This sample API expects an 'email' field.
-//                     password: password
-//                 });
-
-//                 // If the request is successful, the API will send back a response.
-//                 // This sample API sends back a token.
-//                 console.log('Success:', response.data);
-
-//                 // Display a success message to the user
-//                 messageContainer.innerHTML = `<div class="alert alert-success"><strong>Success!</strong> Logged in with token: ${response.data.token}</div>`;
-
-//             } catch (error) {
-//                 // If the request fails, the .catch() block will execute.
-//                 console.error('Error:', error.response ? error.response.data : error.message);
-
-//                 // Display an error message to the user.
-//                 // This sample API returns an error message in `error.response.data.error`.
-//                 const errorMessage = error.response?.data?.error || 'An unexpected error occurred.';
-//                 messageContainer.innerHTML = `<div class="alert alert-danger"><strong>Login Failed:</strong> ${errorMessage}</div>`;
-//             }
-//         });
+  titleInput.value = "";
+  bodyInput.value = "";
+  imageInput.value = "";
+  closeModal("updatePostModal");
+};
