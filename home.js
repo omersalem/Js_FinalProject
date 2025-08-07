@@ -68,7 +68,7 @@ const displayPosts = async () => {
   if (currentPage > lastPage) {
     return;
   }
-  for (post of posts) {
+  for (let post of posts) {
     const profileImage =
       post.author.profile_image && typeof post.author.profile_image === "string"
         ? post.author.profile_image
@@ -97,9 +97,9 @@ const displayPosts = async () => {
               
             </div>
             <div id="edit-container" class="d-flex justify-content-end  w-100 ">
-              <button type="button" id="editPost" class="btn btn-outline-success" onclick="editPost(${encodeURIComponent(
+              <button type="button" id="editPost" class="btn btn-outline-success" onclick="editPost('${encodeURIComponent(
                 JSON.stringify(post)
-              )})">edit</button>
+              )}')">edit</button>
               </div>
            
           </div>
@@ -237,14 +237,43 @@ const fetchTags = async (id) => {
 
 let editPost = (postObject) => {
   let post = JSON.parse(decodeURIComponent(postObject));
-  const modal = new bootstrap.Modal(document.getElementById("createPostModal"));
-  document.getElementById("postTitle").value = post.title;
-  document.getElementById("postContent").value = post.body;
-  document.getElementById("createPostModalLabel").textContent = "Edit Post";
-  document.querySelector("#createPostModal button[type='button']").textContent =
-    "Update Post";
+  const modal = new bootstrap.Modal(
+    document.getElementById("updatePostModal")
+  );
+  document.getElementById("updatepostTitle").value = post.title;
+  document.getElementById("updatepostContent").value = post.body;
+  document.getElementById("updatePostModalLabel").textContent = "Edit Post";
+  const postId = post.id;
+  const editButton = document.querySelector(".update-btn");
+  editButton.id = postId;
   modal.show();
 };
+
+const updatePost = async () => {
+  showLoader(); // Show loader at the beginning
+  const titleInput = document.getElementById("updatepostTitle");
+  const bodyInput = document.getElementById("updatepostContent");
+  const imageInput = document.getElementById("updatepostImage");
+
+  const title = titleInput.value;
+  const body = bodyInput.value;
+  const image = imageInput.files[0];
+
+  // Client-side image size validation
+  const MAX_IMAGE_SIZE_MB = 5;
+  const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024; // 5MB
+
+  if (image && image.size > MAX_IMAGE_SIZE_BYTES) {
+    setAlert(
+      `Image size exceeds the maximum limit of ${MAX_IMAGE_SIZE_MB}MB. Please choose a smaller image.`,
+      "danger"
+    );
+    closeModal("updatePostModal");
+    hideLoader(); // Hide loader if validation fails
+
+    return; // Stop the function execution
+  }
+}
 
 // Logout
 // axios post login

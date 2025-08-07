@@ -220,6 +220,70 @@
       </div>
     </div>
     <!-- Create Post Modal End -->
+    <!-- Update Post Modal -->
+    <div
+      class="modal fade"
+      id="updatePostModal"
+      tabindex="-1"
+      aria-labelledby="createPostModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 shadow">
+          <div class="modal-header p-4 border-bottom-0">
+            <!-- Modal Title -->
+            <h1 class="modal-title fs-4 fw-bold" id="updatePostModalLabel">
+              Create a New Post
+            </h1>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body p-4 pt-0">
+            <!-- Update Post form -->
+            <form>
+              <div class="mb-3">
+                <label for="postImage" class="form-label">Post Image</label>
+                <input
+                  class="form-control rounded-3"
+                  type="file"
+                  id="updatepostImage"
+                />
+              </div>
+              <div class="form-floating mb-3">
+                <input
+                  type="text"
+                  class="form-control rounded-3"
+                  id="updatepostTitle"
+                  placeholder="Post Title"
+                />
+                <label for="postTitle">Title</label>
+              </div>
+              <div class="form-floating mb-3">
+                <textarea
+                  class="form-control rounded-3"
+                  placeholder="Write your content here..."
+                  id="updatepostContent"
+                  style="height: 150px"
+                ></textarea>
+                <label for="postContent">Content</label>
+              </div>
+              <button
+                class="update-btn w-100 mb-2 btn btn-lg rounded-3 btn-success"
+                type="button"
+                onclick="updatePost()"
+              >
+                Update Post
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Update Post Modal End -->
 
     <!-- Login Modal -->
 
