@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>User Posts</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+
+    <link
+      rel="stylesheet"
+      href="node_modules/bootstrap/dist/css/bootstrap.min.css"
+    />
+    <style>
+      body {
+        background-color: #f0ecff;
+      }
+      .loader-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(255, 255, 255, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+        visibility: hidden; /* Hidden by default */
+        opacity: 0; /* Hidden by default */
+        transition: visibility 0s, opacity 0.3s linear; /* Smooth transition */
+      }
+      .loader-overlay.show {
+        visibility: visible;
+        opacity: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Loader HTML -->
+    <div id="loader" class="loader-overlay">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+    </div>
+
+    <div
+      role="button"
+      class="position-fixed bottom-0 mb-5 me-5 end-0 fs-1"
+      data-bs-toggle="modal"
+      data-bs-target="#createPostModal"
+    >
+      <i id="add-post" class="fa-solid fa-circle-plus" size="lg"></i>
+    </div>
+
+    <!-- Alert -->
+    <div
+      class="show fade"
+      id="liveAlertPlaceholder"
+      style="z-index: 100; position: fixed; width: 100%; top: 0; left: 0"
+    ></div>
+    <!-- Alert End -->
+
+    <!-- Register Modal -->
+    <div
+      class="modal fade"
+      id="registerModal"
+      tabindex="-1"
+      aria-labelledby="registerModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 shadow">
+          <div class="modal-header p-4 border-bottom-0">
+            <!-- Modal Title -->
+            <h1 class="modal-title fs-4 fw-bold" id="registerModalLabel">
+              Create Your Account
+            </h1>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body p-4 pt-0">
+            <!-- Registration form -->
+            <form>
+              <div class="mb-3">
+                <label for="profileImageReg" class="form-label"
+                  >Profile Image</label
+                >
+                <input
+                  class="form-control rounded-3"
+                  type="file"
+                  id="imageReg"
+                />
+              </div>
+              <div class="form-floating mb-3">
+                <input
+                  type="text"
+                  class="form-control"
+                  id="username-reg"
+                  placeholder="Username"
+                />
+                <label for="floatingUsername">Username</label>
+              </div>
+              <div class="form-floating mb-3">
+                <input
+                  type="text"
+                  class="form-control rounded-3"
+                  id="user-reg"
+                  placeholder="Full Name"
+                />
+                <label for="floatingName">Name</label>
+              </div>
+              <div class="form-floating mb-3">
+                <input
+                  type="email"
+                  class="form-control rounded-3"
+                  id="email-reg"
+                  placeholder="name@example.com"
+                  autocomplete="email"
+                />
+                <label for="floatingEmail">Email address</label>
+              </div>
+
+              <div class="form-floating mb-3">
+                <input
+                  type="password"
+                  class="form-control rounded-3"
+                  id="password-reg"
+                  placeholder="Password"
+                  autocomplete="new-password"
+                />
+                <label for="floatingPassword">Password</label>
+              </div>
+
+              <button
+                class="w-100 mb-2 btn btn-lg rounded-3 btn-primary"
+                id="register-reg"
+                type="button"
+                onclick="register()"
+              >
+                Register
+              </button>
+              <small class="text-body-secondary"
+                >By clicking Register, you agree to the terms of use.</small
+              >
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Register Modal End -->
+
+    <!-- Create Post Modal -->
+    <div
+      class="modal fade"
+      id="createPostModal"
+      tabindex="-1"
+      aria-labelledby="createPostModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 shadow">
+          <div class="modal-header p-4 border-bottom-0">
+            <!-- Modal Title -->
+            <h1 class="modal-title fs-4 fw-bold" id="createPostModalLabel">
+              Create a New Post
+            </h1>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body p-4 pt-0">
+            <!-- Create Post form -->
+            <form>
+              <div class="mb-3">
+                <label for="postImage" class="form-label">Post Image</label>
+                <input
+                  class="form-control rounded-3"
+                  type="file"
+                  id="postImage"
+                />
+              </div>
+              <div class="form-floating mb-3">
+                <input
+                  type="text"
+                  class="form-control rounded-3"
+                  id="postTitle"
+                  placeholder="Post Title"
+                />
+                <label for="postTitle">Title</label>
+              </div>
+              <div class="form-floating mb-3">
+                <textarea
+                  class="form-control rounded-3"
+                  placeholder="Write your content here..."
+                  id="postContent"
+                  style="height: 150px"
+                ></textarea>
+                <label for="postContent">Content</label>
+              </div>
+              <button
+                class="w-100 mb-2 btn btn-lg rounded-3 btn-success"
+                type="button"
+                onclick="createPost()"
+              >
+                Create Post
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Create Post Modal End -->
+    <!-- Update Post Modal -->
+    <div
+      class="modal fade"
+      id="updatePostModal"
+      tabindex="-1"
+      aria-labelledby="createPostModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 shadow">
+          <div class="modal-header p-4 border-bottom-0">
+            <!-- Modal Title -->
+            <h1 class="modal-title fs-4 fw-bold" id="updatePostModalLabel">
+              Create a New Post
+            </h1>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body p-4 pt-0">
+            <!-- Update Post form -->
+            <form>
+              <div class="mb-3">
+                <label for="postImage" class="form-label">Post Image</label>
+                <input
+                  class="form-control rounded-3"
+                  type="file"
+                  id="updatepostImage"
+                />
+              </div>
+              <div class="form-floating mb-3">
+                <input
+                  type="text"
+                  class="form-control rounded-3"
+                  id="updatepostTitle"
+                  placeholder="Post Title"
+                />
+                <label for="postTitle">Title</label>
+              </div>
+              <div class="form-floating mb-3">
+                <textarea
+                  class="form-control rounded-3"
+                  placeholder="Write your content here..."
+                  id="updatepostContent"
+                  style="height: 150px"
+                ></textarea>
+                <label for="postContent">Content</label>
+              </div>
+              <button
+                class="update-btn w-100 mb-2 btn btn-lg rounded-3 btn-success"
+                type="button"
+                onclick="updatePost()"
+              >
+                Update Post
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Update Post Modal End -->
+
+    <!-- Login Modal -->
+
+    <div
+      class="modal fade"
+      id="loginModal"
+      tabindex="-1"
+      aria-labelledby="loginModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-dialog-centered">
+        <!-- Using Bootstrap utility classes for styling -->
+        <div class="modal-content rounded-4 shadow border-0">
+          <div class="modal-header p-4 border-bottom-0">
+            <h1
+              class="modal-title fs-4 fw-bold w-100 text-center"
+              id="loginModalLabel"
+            >
+              Login
+            </h1>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body p-4 pt-0">
+            <div id="message-container" class="mb-3"></div>
+            <form>
+              <!-- Username Input using Bootstrap's Input Group -->
+              <div class="input-group mb-3">
+                <span class="input-group-text"
+                  ><i class="bi bi-person-fill"></i
+                ></span>
+                <div class="form-floating">
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="user-input"
+                    placeholder="yourusername"
+                    value="omersalem2008"
+                    autocomplete="username"
+                  />
+                  <label for="floatingUsername">Username</label>
+                </div>
+              </div>
+
+              <!-- Password Input using Bootstrap's Input Group -->
+              <div class="input-group mb-4">
+                <span class="input-group-text"
+                  ><i class="bi bi-lock-fill"></i
+                ></span>
+                <div class="form-floating">
+                  <input
+                    type="password"
+                    class="form-control"
+                    id="password-input"
+                    placeholder="Password"
+                    value="123456"
+                    autocomplete="current-password"
+                  />
+                  <label for="floatingPassword">Password</label>
+                </div>
+              </div>
+
+              <!-- Action Buttons -->
+              <div class="d-flex gap-3">
+                <button
+                  onclick="login()"
+                  type="button"
+                  class="btn btn-primary w-100 py-2 fw-semibold"
+                >
+                  Log In
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-secondary w-100 py-2 fw-semibold"
+                  data-bs-dismiss="modal"
+                >
+                  Close
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Login Modal End -->
+
+    <!-- Navbar -->
+    <div class="container">
+      <div class="d-flex justify-content-center">
+        <div class="col-9">
+          <nav class="navbar shadow rounded navbar-expand-lg pt-3">
+            <div class="container-fluid">
+              <a class="navbar-brand" href="home.html">Tarmeez</a>
+              <button
+                class="navbar-toggler"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#navbarNav"
+                aria-controls="navbarNav"
+                aria-expanded="false"
+                aria-label="Toggle navigation"
+              >
+                <span class="navbar-toggler-icon"></span>
+              </button>
+              <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                  <li class="nav-item">
+                    <a class="nav-link" href="home.html">Home</a>
+                  </li>
+                  <li class="nav-item">
+                    <a class="nav-link active" aria-current="page" href="#"
+                      >Profile</a
+                    >
+                  </li>
+                </ul>
+                <div id="user-info" class="d-flex w-100 justify-content-end">
+                  <span>
+                    <img
+                      id="nav-pic"
+                      style="width: 40px; height: 40px"
+                      src=""
+                      class="rounded-circle avatar d-none"
+                      alt=""
+                    />
+                  </span>
+                  <span id="nav-username" class="fw-bold m-2 d-none"></span>
+
+                  <button
+                    type="button"
+                    onclick="openLoginModal()"
+                    class="btn btn-outline-success me-3"
+                    data-bs-toggle="modal"
+                    data-bs-target="#loginModal"
+                    id="login-btn"
+                  >
+                    Login
+                  </button>
+                  <button
+                    type="button"
+                    id="register-btn"
+                    class="btn btn-outline-success"
+                    data-bs-toggle="modal"
+                    data-bs-target="#registerModal"
+                  >
+                    Register
+                  </button>
+                  <button
+                    type="button"
+                    onclick="logout()"
+                    class="btn btn-outline-success me-3 d-none"
+                    id="logout-btn"
+                  >
+                    LogOut
+                  </button>
+                </div>
+              </div>
+            </div>
+          </nav>
+          <!-- Posts -->
+          <div
+            id="posts"
+            class="bg-body mt-5"
+            style="background-color: #f0ecff"
+          ></div>
+          <!-- Posts End -->
+        </div>
+      </div>
+    </div>
+    <!-- Navbar End -->
+    <!-- Main Content End -->
+  </body>
+  <script src="node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="./node_modules/axios/dist/axios.min.js"></script>
+  <script src="main.js"></script>
+  <script src="userPosts.js"></script>
+</html>

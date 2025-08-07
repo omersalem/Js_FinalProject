@@ -111,6 +111,10 @@ const login = async () => {
     if (typeof displayCommentBar === "function") {
       displayCommentBar();
     }
+    // Refresh user posts if on userPosts page
+    if (typeof refreshUserPosts === "function") {
+      refreshUserPosts();
+    }
     // I will explain this to the user and then mark the task as complete. The code `if (typeof displayCommentBar === "function")` is a safety check. Here's what it does:
 
     // 1. `typeof displayCommentBar`: This checks the type of the `displayCommentBar` variable.
@@ -182,6 +186,10 @@ function logout() {
   navBar();
   if (typeof displayCommentBar === "function") {
     displayCommentBar();
+  }
+  // Refresh user posts if on userPosts page
+  if (typeof refreshUserPosts === "function") {
+    refreshUserPosts();
   }
 }
 
