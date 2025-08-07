@@ -10,6 +10,7 @@ const cards = document.querySelector("#posts");
 const loader = document.getElementById("loader");
 const updateButton = document.querySelector(".update-btn");
 let editButton = document.getElementById("editPost");
+let deleteButton = document.getElementById("deletePost");
 let users = [];
 const baseUrl = "https://tarmeezacademy.com/api/v1";
 let currentPage = 1;
@@ -91,6 +92,10 @@ const displayPosts = async () => {
       editButton = `<button type="button" id="editPost" class="btn btn-outline-success" onclick="editPost('${encodeURIComponent(
         JSON.stringify(post)
       )}')">edit</button>`;
+      deleteButton = `<button type="button" id="deletePost" class="btn btn-outline-danger" onclick="deletePost(${postId})">delete</button>`;
+    } else {
+      editButton = "";
+      deleteButton = "";
     }
 
     postElement.innerHTML = `
@@ -110,6 +115,7 @@ const displayPosts = async () => {
               
             </div>
             <div id="edit-container" class="d-flex justify-content-end  w-100 ">
+              ${deleteButton}
               ${editButton}
               </div>
            
@@ -252,9 +258,36 @@ let editPost = (postObject) => {
   document.getElementById("updatepostContent").value = post.body;
   document.getElementById("updatePostModalLabel").textContent = "Edit Post";
   const postId = post.id;
+  const updateButton = document.querySelector(".update-btn");
 
-  editButton.id = post.author.id;
+  updateButton.id = postId;
   modal.show();
+};
+let deletePost = async (postId) => {
+  // Show confirmation dialog
+  const confirmDelete = confirm("Are you sure you want to delete this post? This action cannot be undone.");
+  
+  if (!confirmDelete) {
+    return; // User cancelled the deletion
+  }
+
+  let token = localStorage.getItem("token");
+  const URL = `${baseUrl}/posts/${postId}`;
+  const config = {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  };
+  try {
+    const response = await axios.delete(URL, config);
+    setAlert("Post deleted successfully", "success");
+    cards.innerHTML = "";
+    currentPage = 0;
+    displayPosts();
+  } catch (error) {
+    console.error("Error deleting post:", error);
+    setAlert("Error deleting post. Please try again later.", "danger");
+  }
 };
 
 const updatePost = async () => {
