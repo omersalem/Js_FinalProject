@@ -161,6 +161,9 @@ let showComments = (id) => {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
+  const token = localStorage.getItem("token");
+  const payload = JSON.parse(atob(token.split(".")[1]));
+  console.log(payload);
   displayPosts();
 });
 

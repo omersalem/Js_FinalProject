@@ -1,5 +1,81 @@
 # Recommended Security Improvements for Tarmeez Social Media Project
 
+## ⚠️ IMPORTANT: Token Type Detection & Expiration Strategy
+
+### **Step 1: Determine Your Token Type**
+
+Your API might use different token types. Here's how to identify and handle each:
+
+#### **Method A: Check Your Current Token**
+```javascript
+// Run this in browser console after logging in
+const token = localStorage.getItem("token");
+console.log("Token:", token);
+console.log("Token parts:", token ? token.split(".").length : "No token");
+
+if (token) {
+    if (token.split(".").length === 3) {
+        console.log("✅ JWT Token detected");
+        // Try to decode payload
+        try {
+            const payload = JSON.parse(atob(token.split(".")[1]));
+            console.log("Token payload:", payload);
+            if (payload.exp) {
+                console.log("✅ Backend supports expiration");
+                console.log("Expires at:", new Date(payload.exp * 1000));
+            } else {
+                console.log("❌ Backend doesn't set expiration");
+            }
+        } catch (error) {
+            console.log("❌ Cannot decode token");
+        }
+    } else {
+        console.log("❌ Simple Bearer Token detected");
+        console.log("Backend doesn't support built-in expiration");
+    }
+}
+```
+
+#### **Method B: Test API Response**
+```javascript
+// Check what the login API returns
+// Look at Network tab in browser dev tools when logging in
+// Check the response from: POST https://tarmeezacademy.com/api/v1/login
+```
+
+### **Token Type Examples:**
+
+#### **JWT Token (3 parts with dots):**
+```
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+```
+- ✅ Can be decoded to check expiration
+- ✅ May have built-in expiration (`exp` field)
+
+#### **Simple Bearer Token (your current format):**
+```
+48998|XICR8J5f26Z86TTP6GPTmQ9XbBVHsalyqZoWl99t3a84d3cd
+```
+- ❌ Cannot be decoded
+- ❌ No built-in expiration
+- ✅ Still secure and valid for API authentication
+
+#### **Other Simple Token Formats:**
+```
+abc123def456ghi789  (random string)
+user_123_token_xyz  (structured string)
+```
+
+### **Step 2: Choose Your Implementation Strategy**
+
+Based on your token type, use the appropriate code sections below:
+
+- **If JWT with expiration** → Use [JWT Strategy](#jwt-strategy)
+- **If JWT without expiration** → Use [Frontend Expiration Strategy](#frontend-expiration-strategy)
+- **If Simple Token** → Use [Frontend Expiration Strategy](#frontend-expiration-strategy)
+
+---
+
 ## Table of Contents
 1. [Current Security Issues](#current-security-issues)
 2. [Immediate Security Fixes (Easy)](#immediate-security-fixes-easy)
@@ -18,7 +94,7 @@
 **Impact**: Complete account takeover
 
 ### 2. **No Token Expiration Handling** ⚠️
-**Problem**: Tokens never expire on the client side
+**Problem**: Simple tokens don't expire automatically on client side
 **Risk Level**: MEDIUM
 **Impact**: Long-term unauthorized access
 
@@ -36,71 +112,232 @@
 
 ## Immediate Security Fixes (Easy)
 
-### 1. Add Token Expiration Check
+## JWT Strategy
 
-**What it does**: Automatically logs out users when their token expires
-**Difficulty**: Easy (15 minutes)
-**Files to modify**: `main.js`
+### **Use this if your token is JWT format AND has built-in expiration**
 
-#### Step 1: Add Token Validation Function
+#### Step 1: Add JWT Token Management Functions
 Add this code to the top of `main.js` after the existing functions:
 
 ```javascript
-// ============ SECURITY: Token Expiration Check ============
-const isTokenExpired = (token) => {
-    if (!token) return true;
+// ============ SECURITY: JWT Token Management ============
+// Check if token is JWT format
+const isJWTToken = (token) => {
+    if (!token || typeof token !== 'string') return false;
+    return token.split('.').length === 3;
+};
+
+// Get JWT payload safely
+const getJWTPayload = (token) => {
+    if (!isJWTToken(token)) return null;
     
     try {
-        // JWT tokens have 3 parts separated by dots
-        const parts = token.split('.');
-        if (parts.length !== 3) return true;
-        
-        // Decode the payload (middle part)
-        const payload = JSON.parse(atob(parts[1]));
-        
-        // Check if token has expiration time
-        if (!payload.exp) return false; // No expiration set
-        
-        // Compare with current time (exp is in seconds, Date.now() is in milliseconds)
-        const currentTime = Date.now() / 1000;
-        return payload.exp < currentTime;
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return payload;
     } catch (error) {
-        console.error("Error checking token expiration:", error);
-        return true; // If we can't read the token, consider it expired
+        console.error("Error decoding JWT:", error);
+        return null;
     }
 };
 
+// Check if JWT token is expired (using built-in exp field)
+const isJWTExpired = (token) => {
+    const payload = getJWTPayload(token);
+    if (!payload) return true;
+    
+    if (!payload.exp) {
+        console.log("JWT token has no expiration field");
+        return false; // No expiration set
+    }
+    
+    const currentTime = Date.now() / 1000; // JWT exp is in seconds
+    const isExpired = payload.exp < currentTime;
+    
+    if (isExpired) {
+        console.log("JWT token expired based on exp field");
+    }
+    
+    return isExpired;
+};
+
+// Check JWT token validity
+const checkJWTTokenValidity = () => {
+    const token = localStorage.getItem("token");
+    
+    if (!token) {
+        console.log("No token found");
+        return;
+    }
+    
+    if (!isJWTToken(token)) {
+        console.log("Token is not JWT format");
+        clearAuthData();
+        setAlert("Invalid token format. Please log in again.", "warning");
+        return;
+    }
+    
+    if (isJWTExpired(token)) {
+        console.log("JWT token expired, logging out user");
+        clearAuthData();
+        setAlert("Your session has expired. Please log in again.", "warning");
+        return;
+    }
+    
+    console.log("JWT token is valid and not expired");
+};
+
+// Clear all authentication data
+const clearAuthData = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    console.log("Authentication data cleared");
+};
+// ============ END JWT Token Management ============
+```
+
+---
+
+## Frontend Expiration Strategy
+
+### **Use this if your token is Simple Bearer Token OR JWT without expiration**
+
+#### Step 1: Add Frontend Token Management Functions
+Add this code to the top of `main.js` after the existing functions:
+
+```javascript
+// ============ SECURITY: Frontend Token Management ============
+// Detect token type
+const detectTokenType = (token) => {
+    if (!token) return 'none';
+    
+    if (token.split('.').length === 3) {
+        // Check if JWT has expiration
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            return payload.exp ? 'jwt-with-exp' : 'jwt-no-exp';
+        } catch (error) {
+            return 'jwt-invalid';
+        }
+    }
+    
+    return 'simple';
+};
+
+// Store token with frontend expiration timestamp
+const storeTokenWithExpiration = (token, hours = 24) => {
+    const tokenType = detectTokenType(token);
+    console.log(`Storing ${tokenType} token with ${hours} hour expiration`);
+    
+    const expirationTime = Date.now() + (hours * 60 * 60 * 1000);
+    localStorage.setItem("token", token);
+    localStorage.setItem("tokenExpiration", expirationTime.toString());
+    localStorage.setItem("tokenType", tokenType);
+};
+
+// Check if token is expired (frontend expiration)
+const isTokenExpired = () => {
+    const token = localStorage.getItem("token");
+    const expiration = localStorage.getItem("tokenExpiration");
+    const tokenType = localStorage.getItem("tokenType");
+    
+    if (!token) return true; // No token = expired
+    
+    // For JWT with built-in expiration, check that first
+    if (tokenType === 'jwt-with-exp') {
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            const currentTime = Date.now() / 1000;
+            if (payload.exp && payload.exp < currentTime) {
+                console.log("JWT token expired based on exp field");
+                return true;
+            }
+        } catch (error) {
+            console.log("Error checking JWT expiration, using frontend expiration");
+        }
+    }
+    
+    // Check frontend expiration
+    if (!expiration) {
+        // Old token without expiration - set 24h expiration and continue
+        console.log("Token found without expiration, setting 24h expiration");
+        storeTokenWithExpiration(token, 24);
+        return false;
+    }
+    
+    const isExpired = Date.now() > parseInt(expiration);
+    if (isExpired) {
+        console.log("Token expired based on frontend timestamp");
+    }
+    return isExpired;
+};
+
+// Validate token format
+const isValidToken = (token) => {
+    if (!token || typeof token !== 'string') return false;
+    if (token.length < 10) return false; // Too short to be valid
+    
+    const tokenType = detectTokenType(token);
+    
+    if (tokenType === 'jwt-invalid') return false;
+    if (tokenType === 'simple' && !token.includes('|')) {
+        // For simple tokens, check if it looks valid (adjust based on your API)
+        return token.length > 20; // Minimum length for security
+    }
+    
+    return true;
+};
+
+// Check token validity and clean up if needed
 const checkTokenValidity = () => {
     const token = localStorage.getItem("token");
     
-    if (token && isTokenExpired(token)) {
-        console.log("Token expired, logging out user");
-        setAlert("Your session has expired. Please log in again.", "warning");
-        logout();
+    if (!token) {
+        console.log("No token found");
+        return;
     }
+    
+    if (!isValidToken(token)) {
+        console.log("Invalid token format, removing");
+        clearAuthData();
+        setAlert("Invalid session data. Please log in again.", "warning");
+        return;
+    }
+    
+    if (isTokenExpired()) {
+        console.log("Token expired, logging out user");
+        clearAuthData();
+        setAlert("Your session has expired. Please log in again.", "warning");
+        return;
+    }
+    
+    console.log("Token is valid and not expired");
 };
-// ============ END Token Expiration Check ============
+
+// Clear all authentication data
+const clearAuthData = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("tokenExpiration");
+    localStorage.removeItem("tokenType");
+    console.log("Authentication data cleared");
+};
+// ============ END Frontend Token Management ============
 ```
 
-#### Step 2: Check Token on Page Load
-Add this to the bottom of `main.js`, just before the existing `document.addEventListener("DOMContentLoaded")`:
+---
+
+### 1. Choose Your Token Management Strategy
+
+**Based on your token detection above, use the appropriate functions:**
+
+- **JWT with expiration**: Use `checkJWTTokenValidity()`
+- **Simple token or JWT without expiration**: Use `checkTokenValidity()` with frontend expiration
+
+#### Step 2: Update Login Function
+Find the existing login function in `main.js` and replace it with this improved version:
 
 ```javascript
-// Check token validity when page loads
-document.addEventListener("DOMContentLoaded", () => {
-    checkTokenValidity();
-    navBar();
-});
-
-// Check token validity every 5 minutes
-setInterval(checkTokenValidity, 5 * 60 * 1000);
-```
-
-#### Step 3: Check Token Before API Calls
-Update the login function in `main.js` to include token validation:
-
-```javascript
-// Find the existing login function and replace it with this improved version
+// Replace the existing login function with this improved version
 const login = async () => {
     const userInput = document.getElementById("user-input");
     const passwordInput = document.getElementById("password-input");
@@ -125,12 +362,13 @@ const login = async () => {
         const user = response.data.user;
         const token = response.data.token;
 
-        // SECURITY: Check if token is valid before storing
-        if (isTokenExpired(token)) {
-            throw new Error("Received expired token from server");
+        // SECURITY: Validate token before storing
+        if (!isValidToken(token)) {
+            throw new Error("Received invalid token from server");
         }
 
-        localStorage.setItem("token", token);
+        // Store token with 24-hour expiration
+        storeTokenWithExpiration(token, 24);
         localStorage.setItem("user", JSON.stringify(user));
         
         if (messageContainer) {
@@ -159,8 +397,162 @@ const login = async () => {
     }
 
     userInput.value = "";
+#### Step 3: Check Token on Page Load
+Add this to the bottom of `main.js`, replacing the existing `document.addEventListener("DOMContentLoaded")`:
+
+```javascript
+// Check token validity when page loads
+document.addEventListener("DOMContentLoaded", () => {
+    const token = localStorage.getItem("token");
+    const tokenType = localStorage.getItem("tokenType");
+    
+    if (token) {
+        console.log("Found token of type:", tokenType || "unknown");
+        
+        // Use appropriate validation based on token type
+        if (tokenType === 'jwt-with-exp') {
+            checkJWTTokenValidity();
+        } else {
+            checkTokenValidity(); // Frontend expiration
+        }
+    }
+    
+    navBar();
+});
+
+// Check token validity every 5 minutes
+setInterval(() => {
+    const token = localStorage.getItem("token");
+    const tokenType = localStorage.getItem("tokenType");
+    
+    if (token) {
+        if (tokenType === 'jwt-with-exp') {
+            checkJWTTokenValidity();
+        } else {
+            checkTokenValidity();
+        }
+    }
+}, 5 * 60 * 1000);
+```
+
+---
+
+## Quick Token Type Detection Guide
+
+### **🔍 How to Check Your Token Type Right Now**
+
+**Step 1: Open Browser Console (F12)**
+
+**Step 2: Run This Code:**
+```javascript
+// Paste this in browser console after logging in
+const token = localStorage.getItem("token");
+console.log("=== TOKEN ANALYSIS ===");
+console.log("Token:", token);
+
+if (!token) {
+    console.log("❌ No token found - please log in first");
+} else {
+    console.log("Token length:", token.length);
+    
+    // Check if JWT format
+    const parts = token.split(".");
+    console.log("Token parts (dots):", parts.length);
+    
+    if (parts.length === 3) {
+        console.log("✅ JWT Token Format Detected");
+        try {
+            const header = JSON.parse(atob(parts[0]));
+            const payload = JSON.parse(atob(parts[1]));
+            console.log("JWT Header:", header);
+            console.log("JWT Payload:", payload);
+            
+            if (payload.exp) {
+                const expDate = new Date(payload.exp * 1000);
+                console.log("✅ Has built-in expiration:", expDate);
+                console.log("⏰ Expires in:", Math.round((payload.exp * 1000 - Date.now()) / 1000 / 60), "minutes");
+            } else {
+                console.log("❌ No built-in expiration (exp field missing)");
+            }
+        } catch (error) {
+            console.log("❌ Cannot decode JWT:", error.message);
+        }
+    } else {
+        console.log("❌ Simple Bearer Token Format");
+        console.log("Token preview:", token.substring(0, 20) + "...");
+        
+        if (token.includes("|")) {
+            console.log("✅ Contains pipe separator (|)");
+        } else {
+            console.log("❌ No pipe separator - different simple token format");
+        }
+    }
+}
+
+console.log("=== RECOMMENDATION ===");
+if (token && token.split(".").length === 3) {
+    console.log("📋 Use JWT Strategy in the security guide");
+} else {
+    console.log("📋 Use Frontend Expiration Strategy in the security guide");
+}
+```
+
+**Step 3: Follow the Recommendation**
+- If it says "Use JWT Strategy" → Use the JWT code sections
+- If it says "Use Frontend Expiration Strategy" → Use the Frontend Expiration code sections
+
+---
+
+## Implementation Examples by Token Type
+
+### **Example 1: JWT with Expiration (Ideal)**
+```javascript
+// Your token looks like: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiZXhwIjoxNjE2MjM5MDIyfQ.signature
+
+// Use this in main.js:
+document.addEventListener("DOMContentLoaded", () => {
+    checkJWTTokenValidity(); // Uses built-in expiration
+    navBar();
+});
+```
+
+### **Example 2: Simple Token (Your Current Situation)**
+```javascript
+// Your token looks like: 48998|XICR8J5f26Z86TTP6GPTmQ9XbBVHsalyqZoWl99t3a84d3cd
+
+// Use this in main.js:
+document.addEventListener("DOMContentLoaded", () => {
+    checkTokenValidity(); // Uses frontend expiration
+    navBar();
+});
+```
+
+### **Example 3: JWT without Expiration**
+```javascript
+// Your token looks like JWT but has no 'exp' field in payload
+
+// Use this in main.js:
+document.addEventListener("DOMContentLoaded", () => {
+    checkTokenValidity(); // Uses frontend expiration
+    navBar();
+});
+```
     passwordInput.value = "";
 };
+```
+
+#### Step 3: Check Token on Page Load
+Add this to the bottom of `main.js`, replacing the existing `document.addEventListener("DOMContentLoaded")`:
+
+```javascript
+// Check token validity when page loads
+document.addEventListener("DOMContentLoaded", () => {
+    checkTokenValidity();
+    navBar();
+});
+
+// Check token validity every 5 minutes
+setInterval(checkTokenValidity, 5 * 60 * 1000);
 ```
 
 ### 2. Add HTTPS Enforcement
@@ -207,7 +599,7 @@ if (location.protocol !== 'https:' && location.hostname !== 'localhost' && locat
 
 ### 3. Add Request Timeout Protection
 
-**What it does**: Prevents requests from hanging forever
+**What it does**: Prevents requests from hanging forever and handles token validation
 **Difficulty**: Easy (10 minutes)
 **Files to modify**: `main.js`
 
@@ -217,14 +609,15 @@ Add this function to `main.js` after the token validation functions:
 ```javascript
 // ============ SECURITY: Safe API Requests ============
 const makeSecureRequest = async (url, options = {}) => {
-    const token = localStorage.getItem("token");
-    
     // Check if token is expired before making request
-    if (token && isTokenExpired(token)) {
+    if (isTokenExpired()) {
         setAlert("Session expired. Please log in again.", "warning");
-        logout();
+        clearAuthData();
+        navBar();
         throw new Error("Token expired");
     }
+    
+    const token = localStorage.getItem("token");
     
     // Set default timeout of 10 seconds
     const controller = new AbortController();
@@ -246,7 +639,7 @@ const makeSecureRequest = async (url, options = {}) => {
         };
         
         // Add auth token if available
-        if (token) {
+        if (token && isValidToken(token)) {
             config.headers.Authorization = `Bearer ${token}`;
         }
         
@@ -268,7 +661,8 @@ const makeSecureRequest = async (url, options = {}) => {
         // Handle 401 Unauthorized (token expired on server)
         if (error.response?.status === 401) {
             setAlert("Session expired. Please log in again.", "warning");
-            logout();
+            clearAuthData();
+            navBar();
         }
         
         throw error;
@@ -297,7 +691,7 @@ const resetInactivityTimer = () => {
     
     // Only set timer if user is logged in
     const token = localStorage.getItem("token");
-    if (!token) return;
+    if (!token || isTokenExpired()) return;
     
     // Set new timer
     inactivityTimer = setTimeout(() => {
@@ -326,14 +720,14 @@ const stopInactivityMonitoring = () => {
 ```
 
 #### Step 2: Update Login/Logout Functions
-Update the existing login function to start monitoring:
+Update the existing login function to start monitoring (add this after successful login):
 
 ```javascript
 // In the login function, after successful login, add:
 startInactivityMonitoring();
 ```
 
-Update the existing logout function:
+Replace the existing logout function with this improved version:
 
 ```javascript
 // Replace the existing logout function with this improved version
@@ -344,8 +738,7 @@ function logout() {
     stopInactivityMonitoring();
     
     // Clear all stored data
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    clearAuthData();
     
     // Update UI
     navBar();
@@ -356,11 +749,6 @@ function logout() {
     }
     if (typeof refreshUserPosts === "function") {
         refreshUserPosts();
-    }
-    
-    // Clear any sensitive data from memory
-    if (typeof clearSensitiveData === "function") {
-        clearSensitiveData();
     }
 }
 ```
@@ -376,7 +764,7 @@ document.addEventListener("DOMContentLoaded", () => {
     
     // Start inactivity monitoring if user is logged in
     const token = localStorage.getItem("token");
-    if (token && !isTokenExpired(token)) {
+    if (token && !isTokenExpired()) {
         startInactivityMonitoring();
     }
 });
@@ -386,94 +774,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 ## Medium-Term Improvements
 
-### 5. Implement Token Refresh Strategy
-
-**What it does**: Uses short-lived tokens that refresh automatically
-**Difficulty**: Medium (45 minutes)
-**Files to modify**: `main.js`, all API calling functions
-
-#### Step 1: Add Refresh Token Functions
-Add to `main.js`:
-
-```javascript
-// ============ SECURITY: Token Refresh System ============
-const refreshAccessToken = async () => {
-    const refreshToken = localStorage.getItem("refreshToken");
-    
-    if (!refreshToken) {
-        console.log("No refresh token available");
-        logout();
-        return null;
-    }
-    
-    try {
-        console.log("Attempting to refresh access token");
-        const response = await axios.post("https://tarmeezacademy.com/api/v1/refresh", {
-            refresh_token: refreshToken
-        });
-        
-        const newAccessToken = response.data.access_token;
-        const newRefreshToken = response.data.refresh_token;
-        
-        // Store new tokens
-        localStorage.setItem("token", newAccessToken);
-        if (newRefreshToken) {
-            localStorage.setItem("refreshToken", newRefreshToken);
-        }
-        
-        console.log("Token refreshed successfully");
-        return newAccessToken;
-    } catch (error) {
-        console.error("Token refresh failed:", error);
-        setAlert("Session expired. Please log in again.", "warning");
-        logout();
-        return null;
-    }
-};
-
-// Axios interceptor to automatically refresh tokens
-axios.interceptors.response.use(
-    (response) => response,
-    async (error) => {
-        const originalRequest = error.config;
-        
-        // If we get 401 and haven't already tried to refresh
-        if (error.response?.status === 401 && !originalRequest._retry) {
-            originalRequest._retry = true;
-            
-            const newToken = await refreshAccessToken();
-            if (newToken) {
-                // Retry the original request with new token
-                originalRequest.headers.Authorization = `Bearer ${newToken}`;
-                return axios(originalRequest);
-            }
-        }
-        
-        return Promise.reject(error);
-    }
-);
-// ============ END Token Refresh System ============
-```
-
-#### Step 2: Update Login to Store Refresh Token
-Update the login function to handle refresh tokens:
-
-```javascript
-// In the login function, after successful response:
-const user = response.data.user;
-const token = response.data.token;
-const refreshToken = response.data.refresh_token; // If API provides it
-
-localStorage.setItem("token", token);
-localStorage.setItem("user", JSON.stringify(user));
-
-// Store refresh token if provided
-if (refreshToken) {
-    localStorage.setItem("refreshToken", refreshToken);
-}
-```
-
-### 6. Add Input Sanitization
+### 5. Add Input Sanitization
 
 **What it does**: Prevents malicious code injection
 **Difficulty**: Medium (30 minutes)
@@ -569,8 +870,12 @@ const register = async () => {
 
         const response = await axios.post("https://tarmeezacademy.com/api/v1/register", formData);
 
-        localStorage.setItem("token", response.data.token);
-        localStorage.setItem("user", JSON.stringify(response.data.user));
+        const token = response.data.token;
+        const user = response.data.user;
+
+        // Store token with expiration
+        storeTokenWithExpiration(token, 24);
+        localStorage.setItem("user", JSON.stringify(user));
         
         closeModal("registerModal");
         setAlert("Registration successful", "success");
@@ -585,7 +890,7 @@ const register = async () => {
 };
 ```
 
-### 7. Add Rate Limiting Protection
+### 6. Add Rate Limiting Protection
 
 **What it does**: Prevents spam and brute force attacks
 **Difficulty**: Medium (20 minutes)
@@ -637,7 +942,7 @@ const rateLimiter = {
 ```
 
 #### Step 2: Update Login Function with Rate Limiting
-Update the login function:
+Update the login function (add at the beginning):
 
 ```javascript
 // At the beginning of the login function, add:
@@ -651,6 +956,57 @@ const login = async () => {
     
     // ... rest of login function
 };
+```
+
+### 7. Implement Server Token Validation
+
+**What it does**: Validates tokens with the server periodically
+**Difficulty**: Medium (25 minutes)
+**Files to modify**: `main.js`
+
+#### Step 1: Add Server Token Validation
+Add to `main.js`:
+
+```javascript
+// ============ SECURITY: Server Token Validation ============
+const validateTokenWithServer = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return false;
+    
+    try {
+        // Try to make a simple API call to validate token
+        const response = await axios.get("https://tarmeezacademy.com/api/v1/posts?limit=1", {
+            headers: {
+                Authorization: `Bearer ${token}`
+            },
+            timeout: 5000
+        });
+        
+        console.log("Token validated with server");
+        return true;
+    } catch (error) {
+        if (error.response?.status === 401) {
+            console.log("Token rejected by server");
+            clearAuthData();
+            setAlert("Your session has expired. Please log in again.", "warning");
+            navBar();
+            return false;
+        }
+        
+        // Network error - assume token is still valid
+        console.log("Could not validate token with server (network error)");
+        return true;
+    }
+};
+
+// Validate token with server every 10 minutes
+setInterval(async () => {
+    const token = localStorage.getItem("token");
+    if (token && !isTokenExpired()) {
+        await validateTokenWithServer();
+    }
+}, 10 * 60 * 1000);
+// ============ END Server Token Validation ============
 ```
 
 ---
@@ -800,7 +1156,7 @@ if (image) {
 ## Implementation Priority
 
 ### Phase 1: Critical Security (Implement First) 🚨
-1. **Token Expiration Check** - Prevents expired token usage
+1. **Client-Side Token Expiration** - Creates expiration for simple tokens
 2. **HTTPS Enforcement** - Protects data in transit
 3. **Request Timeout** - Prevents hanging requests
 4. **Input Sanitization** - Prevents code injection
@@ -811,17 +1167,17 @@ if (image) {
 ### Phase 2: User Experience Security (Implement Second) ⚠️
 1. **Automatic Session Timeout** - Protects on shared devices
 2. **Rate Limiting** - Prevents abuse
-3. **Secure File Upload** - Validates uploads properly
+3. **Server Token Validation** - Validates tokens with server
+4. **Secure File Upload** - Validates uploads properly
 
 **Time Required**: 2-3 hours
 **Impact**: Medium security improvement
 
 ### Phase 3: Advanced Protection (Implement Third) 🛡️
-1. **Token Refresh Strategy** - Reduces token lifetime risk
-2. **Content Security Policy** - Prevents XSS attacks
-3. **Security Headers** - Additional browser protection
+1. **Content Security Policy** - Prevents XSS attacks
+2. **Security Headers** - Additional browser protection
 
-**Time Required**: 3-4 hours
+**Time Required**: 1-2 hours
 **Impact**: Advanced security hardening
 
 ---
@@ -830,9 +1186,9 @@ if (image) {
 
 ### 1. Test Token Expiration
 ```javascript
-// In browser console, manually expire token
-localStorage.setItem("token", "expired.token.here");
-// Try to make a request - should auto-logout
+// In browser console, set expired timestamp
+localStorage.setItem("tokenExpiration", "1000000000000"); // Old timestamp
+// Refresh page - should auto-logout
 ```
 
 ### 2. Test HTTPS Enforcement
@@ -852,13 +1208,22 @@ localStorage.setItem("token", "expired.token.here");
 - Log in and wait 30 minutes without activity
 - Should automatically log out
 
+### 6. Test Token Validation
+```javascript
+// In browser console, check token format
+const token = localStorage.getItem("token");
+console.log("Token:", token);
+console.log("Has pipe separator:", token.includes("|"));
+console.log("Token length:", token.length);
+```
+
 ---
 
 ## Security Checklist
 
 After implementing all improvements, verify:
 
-- [ ] ✅ Token expiration is checked automatically
+- [ ] ✅ Client-side token expiration is working
 - [ ] ✅ HTTPS is enforced on production
 - [ ] ✅ Requests timeout after 10 seconds
 - [ ] ✅ Users are logged out after 30 minutes of inactivity
@@ -867,7 +1232,8 @@ After implementing all improvements, verify:
 - [ ] ✅ User inputs are sanitized
 - [ ] ✅ Security headers are present
 - [ ] ✅ Content Security Policy is active
-- [ ] ✅ Token refresh works (if implemented)
+- [ ] ✅ Server token validation works
+- [ ] ✅ Token format validation works
 
 ---
 
@@ -880,39 +1246,43 @@ After implementing all improvements, verify:
 
 ---
 
+## Key Differences for Simple Tokens vs JWT
+
+### ❌ What DOESN'T Work (JWT-specific):
+- `JSON.parse(atob(token.split('.')[1]))` - Simple tokens can't be decoded
+- Built-in expiration checking - Simple tokens don't have `exp` field
+- Token payload inspection - No readable payload in simple tokens
+
+### ✅ What WORKS (Simple Token approach):
+- Client-side expiration timestamps
+- Server validation through API calls
+- Token format validation (checking for pipe separator)
+- All other security measures (HTTPS, rate limiting, etc.)
+
+---
+
 ## Troubleshooting Common Issues
 
-### Issue: "Token expired" messages appearing too frequently
-**Solution**: Check if server tokens have very short expiration times. Implement token refresh if needed.
+### Issue: "InvalidCharacterError" when trying to decode token
+**Solution**: Don't try to decode simple tokens like JWT. Use the token validation functions provided in this guide.
 
-### Issue: HTTPS redirect not working
-**Solution**: Make sure the script is added to all HTML files and test on a real domain (not localhost).
+### Issue: Token expiration not working
+**Solution**: Simple tokens need client-side expiration. Make sure you're using `storeTokenWithExpiration()` when logging in.
+
+### Issue: "Token expired" messages appearing immediately
+**Solution**: Check if `tokenExpiration` timestamp is set correctly. Clear localStorage and login again if needed.
 
 ### Issue: Rate limiting blocking legitimate users
 **Solution**: Adjust the limits in the `isAllowed` function calls (increase maxAttempts or timeWindow).
-
-### Issue: File uploads failing after security updates
-**Solution**: Check browser console for specific validation errors and adjust file validation rules if needed.
-
-### Issue: CSP blocking legitimate resources
-**Solution**: Update the CSP policy to include any new domains or resources your app needs.
 
 ---
 
 ## Conclusion
 
-These security improvements will transform your Tarmeez social media project from a basic application to a production-ready, secure platform. Start with Phase 1 improvements for immediate security benefits, then gradually implement the advanced features.
-
-Remember: Security is an ongoing process, not a one-time fix. Regularly review and update your security measures as new threats emerge and your application grows.
+These security improvements are specifically designed for the Tarmeez Academy API's simple token system. The key difference from JWT-based systems is that we implement client-side expiration and validation since the tokens don't contain built-in expiration information.
 
 **Key Benefits After Implementation**:
 - ✅ Protection against XSS attacks
-- ✅ Secure token management
+- ✅ Secure token management with client-side expiration
 - ✅ Protection against brute force attacks
 - ✅ Secure file uploads
-- ✅ Automatic session management
-- ✅ HTTPS enforcement
-- ✅ Input validation and sanitization
-- ✅ Rate limiting protection
-
-Your users' data and accounts will be much safer, and your application will meet modern security standards.
