@@ -17,14 +17,14 @@ const displayUserPosts = async () => {
     console.log("No valid response received");
     return;
   }
-  
+
   let posts = response.data;
   let lastPage = response.meta ? response.meta.last_page : 1;
-  
+
   if (response.meta && currentPage > lastPage) {
     return;
   }
-  
+
   // If no posts found, show empty state
   if (!posts || posts.length === 0) {
     if (currentPage === 1) {
@@ -32,16 +32,17 @@ const displayUserPosts = async () => {
     }
     return;
   }
-  
+
   console.log("Rendering", posts.length, "posts");
-  
+
   for (let post of posts) {
     const profileImage =
       post.author.profile_image && typeof post.author.profile_image === "string"
         ? post.author.profile_image
         : "./profile-pics/1.jpg";
     const postElement = document.createElement("div");
-    postElement.className = "card"; // Add a class for styling
+    // Use a neutral wrapper to avoid conflicting with global .card styles
+    postElement.className = "post-wrapper";
     const tags = await fetchTags(post.id);
 
     postElement.dataset.id = post.id;
@@ -54,11 +55,11 @@ const displayUserPosts = async () => {
       editButton = `<button type="button" id="editPost" class="btn btn-outline-success" onclick="editPost('${encodeURIComponent(
         JSON.stringify(post)
       )}')">edit</button>`;
-      deleteButton = `<button type="button" id="deletePost" class="btn btn-outline-danger" onclick="deletePost(${postId})">delete</button>`;
+      deleteButton = `<button type="button" id="deletePost" class="btn btn-outline-danger me-2" onclick="deletePost(${postId})">delete</button>`;
     }
 
     postElement.innerHTML = `
-<div class="card col-9 mx-auto mt-5 mb-5 w-100 shadow">
+<div class="card col-9 mx-auto shadow-lg-hover mt-5 mb-5 w-100 shadow">
           <div
             class="card-header bg-white py-3 d-flex justify-content-between position-relative  align-items-center"
           >
@@ -123,17 +124,21 @@ const fetchUserPosts = async (userId, currentPage = 1) => {
     // The data from the API is usually in `response.data`
     posts = response.data;
 
-    console.log("User posts fetched successfully! Found", posts.data ? posts.data.length : 0, "posts");
+    console.log(
+      "User posts fetched successfully! Found",
+      posts.data ? posts.data.length : 0,
+      "posts"
+    );
     return posts;
   } catch (error) {
     // If an error occurs, the catch block will run
     console.error("Error fetching user posts:", error);
-    
+
     // If no posts found for user (404), show empty state instead of error
     if (error.response && error.response.status === 404) {
       return { data: [], meta: { last_page: 1 } };
     }
-    
+
     setAlert("Error fetching user posts, please try again later.", "danger");
     return { data: [], meta: { last_page: 1 } };
   }
@@ -149,6 +154,98 @@ const fetchTags = async (id) => {
     return [];
   }
 };
+// ============ Profile Summary ============
+
+const fetchUserDetails = async (userId) => {
+  try {
+    const res = await axios.get(`${baseUrl}/users/${userId}`);
+    return res.data && res.data.data ? res.data.data : null;
+  } catch (error) {
+    console.error("Error fetching user details:", error);
+    return null;
+  }
+};
+
+const fetchUserPostsTotal = async (userId) => {
+  try {
+    // Fetch just meta info (limit=1 keeps payload small)
+    const resp = await axios.get(
+      `${baseUrl}/users/${userId}/posts?limit=1&page=1`
+    );
+    const meta = resp.data && resp.data.meta ? resp.data.meta : null;
+    // Prefer meta.total if provided, else fallback to data length
+    return (
+      (meta && (meta.total || meta.Total)) ??
+      (resp.data && Array.isArray(resp.data.data)
+        ? resp.data.data.length
+        : 0) ??
+      0
+    );
+  } catch (error) {
+    console.error("Error fetching user posts total:", error);
+    return 0;
+  }
+};
+
+const renderUserSummary = async () => {
+  const container = document.getElementById("user-summary");
+  if (!container) return;
+
+  const user = JSON.parse(localStorage.getItem("user"));
+
+  if (!user) {
+    container.innerHTML = `
+      <div class="user-summary-card d-flex align-items-center justify-content-center text-muted" style="min-height:72px;">
+        Please log in to view your profile overview.
+      </div>
+    `;
+    return;
+  }
+
+  const [details, postsTotal] = await Promise.all([
+    fetchUserDetails(user.id),
+    fetchUserPostsTotal(user.id),
+  ]);
+
+  const profileImage =
+    user.profile_image && typeof user.profile_image === "string"
+      ? user.profile_image
+      : "./profile-pics/1.jpg";
+
+  const displayName =
+    (details && (details.name || details.username)) || user.username;
+
+  const username = user.username;
+
+  const postsCount =
+    (details && (details.posts_count ?? details.postsCount)) ?? postsTotal ?? 0;
+
+  const commentsCount =
+    (details && (details.comments_count ?? details.commentsCount)) ?? 0;
+
+  container.innerHTML = `
+    <div class="user-summary-card">
+      <div class="summary-left d-flex align-items-center gap-3">
+        <img src="${profileImage}" alt="avatar" class="avatar-xl rounded-circle" />
+        <div class="d-flex flex-column">
+          <span class="fw-semibold fs-5">${displayName}</span>
+          <span class="text-muted">@${username}</span>
+        </div>
+      </div>
+      <div class="summary-right d-flex align-items-center gap-4">
+        <div class="text-center">
+          <div class="kpi-circle">${postsCount}</div>
+          <div class="kpi-label">Posts</div>
+        </div>
+        <div class="text-center">
+          <div class="kpi-circle">${commentsCount}</div>
+          <div class="kpi-label">Comments</div>
+        </div>
+      </div>
+    </div>
+  `;
+};
+// ============ Profile Summary END ============
 
 // Show Comments Function
 let showComments = (id) => {
@@ -192,6 +289,7 @@ let deletePost = async (postId) => {
   try {
     const response = await axios.delete(URL, config);
     setAlert("Post deleted successfully", "success");
+    renderUserSummary();
     cards.innerHTML = "";
     currentPage = 0;
     displayUserPosts();
@@ -244,6 +342,7 @@ const createPost = async () => {
   try {
     const response = await axios.post(url, formData, config);
     setAlert("Post created successfully", "success");
+    renderUserSummary();
     cards.innerHTML = "";
     currentPage = 0;
     displayUserPosts();
@@ -318,6 +417,7 @@ const updatePost = async () => {
   try {
     const response = await axios.post(url, formData, config);
     setAlert("Post updated successfully", "success");
+    renderUserSummary();
     cards.innerHTML = "";
     currentPage = 0;
     displayUserPosts();
@@ -371,6 +471,7 @@ const showEmptyState = () => {
 
 // Function to refresh user posts (called after login)
 const refreshUserPosts = () => {
+  renderUserSummary();
   const user = JSON.parse(localStorage.getItem("user"));
   if (user) {
     cards.innerHTML = ""; // Clear existing content
@@ -389,6 +490,7 @@ const openLoginModal = () => {
 
 // Initialize when DOM is loaded
 document.addEventListener("DOMContentLoaded", () => {
+  renderUserSummary();
   const user = JSON.parse(localStorage.getItem("user"));
   if (user) {
     displayUserPosts();

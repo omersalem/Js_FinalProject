@@ -13,6 +13,7 @@
       rel="stylesheet"
       href="node_modules/bootstrap/dist/css/bootstrap.min.css"
     />
+    <link rel="stylesheet" href="style.css" />
     <style>
       body {
         background-color: #f0ecff;
@@ -446,10 +447,32 @@
               </div>
             </div>
           </nav>
+          <!-- Profile Summary -->
+          <div id="profile-summary-wrapper" class="mt-4">
+            <div id="user-summary" class="user-summary-card">
+              <div class="summary-left d-flex align-items-center gap-3">
+                <div class="avatar-xl rounded-circle" style="width:64px;height:64px;background:#eee;"></div>
+                <div class="d-flex flex-column">
+                  <span class="fw-semibold fs-5 placeholder-glow"><span class="placeholder col-6"></span></span>
+                  <span class="text-muted placeholder-glow"><span class="placeholder col-4"></span></span>
+                </div>
+              </div>
+              <div class="summary-right d-flex align-items-center gap-4">
+                <div class="text-center">
+                  <div class="kpi-circle">0</div>
+                  <div class="kpi-label">Posts</div>
+                </div>
+                <div class="text-center">
+                  <div class="kpi-circle">0</div>
+                  <div class="kpi-label">Comments</div>
+                </div>
+              </div>
+            </div>
+          </div>
           <!-- Posts -->
           <div
             id="posts"
-            class="bg-body mt-5"
+            class="bg-body mt-4"
             style="background-color: #f0ecff"
           ></div>
           <!-- Posts End -->

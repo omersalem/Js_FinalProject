@@ -30,13 +30,11 @@
     transform: rotate(1turn);
   }
 }
-/* From Uiverse.io by Tiagoadag */
+/* Card base reset + hover glow (applies on all pages) */
 .card {
-  width: 190px;
-  height: 254px;
-  background-image: linear-gradient(163deg, #00ff75 0%, #3700ff 100%);
-  border-radius: 20px;
-  transition: all 0.3s;
+  border-radius: 0.5rem;
+  transition: box-shadow 0.25s ease, transform 0.2s ease;
+  background-clip: border-box;
 }
 
 .card2 {
@@ -53,7 +51,8 @@
 }
 
 .card:hover {
-  box-shadow: 0px 0px 30px 1px rgba(0, 255, 117, 0.3);
+  box-shadow: 0 10px 28px rgba(99, 102, 241, 0.22), 0 0 0 3px rgba(99, 102, 241, 0.12);
+  transform: translateY(-2px);
 }
 
 /* From Uiverse.io by reglobby */
@@ -98,4 +97,104 @@
   width: 27px;
   height: 27px;
   fill: #fff;
+}
+
+/* ====== User Summary (Profile header before posts) ====== */
+.user-summary-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 16px 24px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.avatar-xl {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+}
+
+.kpi-circle {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 20px;
+  color: #2f2f2f;
+  background: #fff;
+}
+
+.kpi-label {
+  margin-top: 4px;
+  font-size: 0.9rem;
+  color: #9aa0a6;
+}
+/* ====== End User Summary ====== */
+
+/* ===== Fix: keep Bootstrap cards full width on userPosts page ===== */
+#posts .card {
+  width: 100% !important;
+  height: auto !important;
+  background-image: none !important;
+  background: #fff !important;
+}
+/* ===== End Fix ===== */
+
+/* ===== Responsive tweaks for user summary ===== */
+.user-summary-card {
+  flex-wrap: wrap;
+}
+
+.summary-left { flex: 1 1 auto; min-width: 220px; }
+.summary-right { flex: 0 0 auto; }
+
+/* Scale avatar and circles responsively */
+.avatar-xl {
+  width: clamp(48px, 8vw, 64px);
+  height: clamp(48px, 8vw, 64px);
+}
+
+.kpi-circle {
+  width: clamp(44px, 7vw, 56px);
+  height: clamp(44px, 7vw, 56px);
+  font-size: clamp(14px, 2.8vw, 20px);
+}
+
+/* Breakpoint adjustments */
+@media (max-width: 992px) {
+  .user-summary-card { gap: 16px; }
+}
+
+@media (max-width: 768px) {
+  .summary-right {
+    width: 100%;
+    display: flex;
+    justify-content: space-evenly;
+  }
+}
+
+@media (max-width: 480px) {
+  .user-summary-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .summary-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+/* Home page posts: subtle yellow glow on hover */
+.page-home #posts .card:hover {
+  box-shadow: 0 8px 24px rgba(253, 224, 71, 0.35), 0 0 0 3px rgba(253, 224, 71, 0.18);
+  transform: translateY(-2px);
 }

@@ -265,8 +265,10 @@ let editPost = (postObject) => {
 };
 let deletePost = async (postId) => {
   // Show confirmation dialog
-  const confirmDelete = confirm("Are you sure you want to delete this post? This action cannot be undone.");
-  
+  const confirmDelete = confirm(
+    "Are you sure you want to delete this post? This action cannot be undone."
+  );
+
   if (!confirmDelete) {
     return; // User cancelled the deletion
   }
@@ -360,4 +362,8 @@ const updatePost = async () => {
   bodyInput.value = "";
   imageInput.value = "";
   closeModal("updatePostModal");
+};
+
+const gotouserPosts = () => {
+  window.location.href = `userPosts.html`;
 };
