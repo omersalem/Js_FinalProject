@@ -41,7 +41,7 @@ const fetchPosts = async (currentPage = 1) => {
     // 3. Use await to wait for the response
     // We are requesting data from a placeholder API
     const response = await axios.get(
-      `${baseUrl}/posts?limit=10&page=${currentPage}`
+      `${baseUrl}/posts?limit=5&page=${currentPage}`
     );
 
     // 4. The data from the API is usually in `response.data`
@@ -65,14 +65,16 @@ const fetchPosts = async (currentPage = 1) => {
 const displayPosts = async () => {
   // cards.innerHTML = "";
   currentPage = currentPage + 1;
-
+  showLoader(); // Show loader at the beginning
   let response = await fetchPosts(currentPage);
   if (!response.meta) {
+    hideLoader(); // Hide loader if no meta information
     return;
   }
   let posts = response.data;
   let lastPage = response.meta.last_page;
   if (currentPage > lastPage) {
+    hideLoader(); // Hide loader if no more pages
     return;
   }
   for (let post of posts) {
@@ -108,7 +110,9 @@ const displayPosts = async () => {
                 src="${profileImage}"
                 class="rounded-circle avatar me-2 avatar-img"
                 alt="User Avatar"
-                style="width: 40px; height: 40px"
+                style="width: 40px; height: 40px; cursor: pointer;"
+                onclick="gotouserPosts(${post.author.id})"
+                title="View ${post.author.username}'s profile"
               />
               <span class="fw-bold username">@${post.author.username}</span>
               
@@ -153,6 +157,7 @@ const displayPosts = async () => {
     }
     cards.appendChild(postElement);
   }
+  hideLoader(); // Hide loader after posts are displayed
 };
 
 let showComments = (id) => {
@@ -161,9 +166,6 @@ let showComments = (id) => {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
-  const token = localStorage.getItem("token");
-  const payload = JSON.parse(atob(token.split(".")[1]));
-  console.log(payload);
   displayPosts();
 });
 
@@ -367,6 +369,6 @@ const updatePost = async () => {
   closeModal("updatePostModal");
 };
 
-const gotouserPosts = () => {
-  window.location.href = `userPosts.html`;
+const gotouserPosts = (userId) => {
+  window.location.href = `userPosts.html?id=${userId}`;
 };

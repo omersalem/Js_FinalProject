@@ -2,17 +2,29 @@ let currentPage = 0;
 const baseUrl = "https://tarmeezacademy.com/api/v1";
 const cards = document.querySelector("#posts");
 
-const displayUserPosts = async () => {
-  // Check if user is logged in
-  const user = JSON.parse(localStorage.getItem("user"));
-  if (!user) {
-    setAlert("Please log in to view your posts.", "warning");
-    return;
+const displayUserPosts = async (targetUserId = null) => {
+  // Get target user ID from URL parameter or use logged-in user
+  const urlParams = new URLSearchParams(window.location.search);
+  const userIdFromUrl = urlParams.get('id');
+  
+  let userId;
+  if (targetUserId) {
+    userId = targetUserId;
+  } else if (userIdFromUrl) {
+    userId = userIdFromUrl;
+  } else {
+    // Fallback to logged-in user
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (!user) {
+      setAlert("Please log in to view your posts.", "warning");
+      return;
+    }
+    userId = user.id;
   }
 
   currentPage = currentPage + 1;
 
-  let response = await fetchUserPosts(user.id, currentPage);
+  let response = await fetchUserPosts(userId, currentPage);
   if (!response || !response.data) {
     console.log("No valid response received");
     return;
@@ -187,35 +199,63 @@ const fetchUserPostsTotal = async (userId) => {
   }
 };
 
-const renderUserSummary = async () => {
+const renderUserSummary = async (targetUserId = null) => {
   const container = document.getElementById("user-summary");
   if (!container) return;
 
-  const user = JSON.parse(localStorage.getItem("user"));
+  // Get target user ID from URL parameter or use logged-in user
+  const urlParams = new URLSearchParams(window.location.search);
+  const userIdFromUrl = urlParams.get('id');
+  
+  let userId;
+  let isOwnProfile = false;
+  
+  if (targetUserId) {
+    userId = targetUserId;
+  } else if (userIdFromUrl) {
+    userId = userIdFromUrl;
+  } else {
+    // Fallback to logged-in user
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (!user) {
+      container.innerHTML = `
+        <div class="user-summary-card d-flex align-items-center justify-content-center text-muted" style="min-height:72px;">
+          Please log in to view your profile overview.
+        </div>
+      `;
+      return;
+    }
+    userId = user.id;
+    isOwnProfile = true;
+  }
 
-  if (!user) {
+  // Check if viewing own profile
+  const loggedInUser = JSON.parse(localStorage.getItem("user"));
+  if (loggedInUser && loggedInUser.id == userId) {
+    isOwnProfile = true;
+  }
+
+  const [details, postsTotal] = await Promise.all([
+    fetchUserDetails(userId),
+    fetchUserPostsTotal(userId),
+  ]);
+
+  if (!details) {
     container.innerHTML = `
       <div class="user-summary-card d-flex align-items-center justify-content-center text-muted" style="min-height:72px;">
-        Please log in to view your profile overview.
+        User not found.
       </div>
     `;
     return;
   }
 
-  const [details, postsTotal] = await Promise.all([
-    fetchUserDetails(user.id),
-    fetchUserPostsTotal(user.id),
-  ]);
-
   const profileImage =
-    user.profile_image && typeof user.profile_image === "string"
-      ? user.profile_image
+    details.profile_image && typeof details.profile_image === "string"
+      ? details.profile_image
       : "./profile-pics/1.jpg";
 
-  const displayName =
-    (details && (details.name || details.username)) || user.username;
-
-  const username = user.username;
+  const displayName = details.name || details.username;
+  const username = details.username;
 
   const postsCount =
     (details && (details.posts_count ?? details.postsCount)) ?? postsTotal ?? 0;
@@ -223,7 +263,15 @@ const renderUserSummary = async () => {
   const commentsCount =
     (details && (details.comments_count ?? details.commentsCount)) ?? 0;
 
+  // Add indicator if viewing someone else's profile
+  const profileIndicator = isOwnProfile ?
+    '' :
+    `<div class="text-center mb-2">
+      <small class="text-muted">Viewing ${displayName}'s Profile</small>
+    </div>`;
+
   container.innerHTML = `
+    ${profileIndicator}
     <div class="user-summary-card">
       <div class="summary-left d-flex align-items-center gap-3">
         <img src="${profileImage}" alt="avatar" class="avatar-xl rounded-circle" />
@@ -451,8 +499,20 @@ const updatePost = async () => {
 
 // Function to show empty state message
 const showEmptyState = () => {
-  const user = JSON.parse(localStorage.getItem("user"));
-  if (user) {
+  const urlParams = new URLSearchParams(window.location.search);
+  const userIdFromUrl = urlParams.get('id');
+  const loggedInUser = JSON.parse(localStorage.getItem("user"));
+  
+  if (userIdFromUrl && loggedInUser && loggedInUser.id != userIdFromUrl) {
+    // Viewing someone else's profile with no posts
+    cards.innerHTML = `
+      <div class="text-center mt-5">
+        <h3>No Posts Yet</h3>
+        <p class="text-muted">This user hasn't created any posts yet.</p>
+      </div>
+    `;
+  } else if (loggedInUser) {
+    // Own profile with no posts
     cards.innerHTML = `
       <div class="text-center mt-5">
         <h3>No Posts Yet</h3>
@@ -460,10 +520,11 @@ const showEmptyState = () => {
       </div>
     `;
   } else {
+    // Not logged in
     cards.innerHTML = `
       <div class="text-center mt-5">
         <h3>Please Log In</h3>
-        <p class="text-muted">You need to log in to view your posts.</p>
+        <p class="text-muted">You need to log in to view posts.</p>
       </div>
     `;
   }
@@ -491,8 +552,13 @@ const openLoginModal = () => {
 // Initialize when DOM is loaded
 document.addEventListener("DOMContentLoaded", () => {
   renderUserSummary();
-  const user = JSON.parse(localStorage.getItem("user"));
-  if (user) {
+  
+  // Check if we have a user ID in URL or logged-in user
+  const urlParams = new URLSearchParams(window.location.search);
+  const userIdFromUrl = urlParams.get('id');
+  const loggedInUser = JSON.parse(localStorage.getItem("user"));
+  
+  if (userIdFromUrl || loggedInUser) {
     displayUserPosts();
   } else {
     showEmptyState();

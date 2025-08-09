@@ -55,6 +55,7 @@ let sendComment = async (event) => {
   const authToken = localStorage.getItem("token");
 
   try {
+    showLoader(); // Show loader while posting comment
     const response = await axios.post(
       // 1. The API endpoint URL
       `${baseUrl}/posts/${postId}/comments`,
@@ -76,16 +77,20 @@ let sendComment = async (event) => {
     const commentInput2 = document.getElementById("comment-input");
     commentInput2.value = "";
     showPost();
+    hideLoader(); // Hide loader after posting comment
   } catch (error) {
     console.error("Error posting comment:", error);
+    hideLoader(); // Hide loader if there's an error
     // Real APIs would return a 401 or 403 error if the token is invalid
     if (
       error.response &&
       (error.response.status === 401 || error.response.status === 403)
     ) {
       setAlert("Authorization Failed: Please check your API token.", "danger");
+      hideLoader();
     } else {
       setAlert("Error: Could not post your comment.", "danger");
+      hideLoader(); // Hide loader if there's an error
     }
   }
 };

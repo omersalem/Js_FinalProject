@@ -68,7 +68,7 @@ function navBar() {
     if (addPostBtn) addPostBtn.classList.remove("d-none");
   } else {
     if (loginBtn) loginBtn.classList.remove("d-none");
-    if (registerBtn) registerBtn.classList.remove("d-d-none");
+    if (registerBtn) registerBtn.classList.remove("d-none");
     if (logoutBtn) logoutBtn.classList.add("d-none");
     if (navUsername) navUsername.classList.add("d-none");
     if (navPic) navPic.classList.add("d-none");
@@ -90,6 +90,7 @@ const login = async () => {
   }
 
   try {
+    showLoader(); // Show loader while logging in
     const response = await axios.post(
       "https://tarmeezacademy.com/api/v1/login",
       {
@@ -101,7 +102,7 @@ const login = async () => {
 
     localStorage.setItem("token", response.data.token);
     localStorage.setItem("user", JSON.stringify(user));
-    
+
     if (messageContainer) {
       messageContainer.innerHTML = `<div class="alert alert-success"><strong>Success!</strong> Logged in </div>`;
     }
@@ -115,6 +116,7 @@ const login = async () => {
     if (typeof refreshUserPosts === "function") {
       refreshUserPosts();
     }
+
     // I will explain this to the user and then mark the task as complete. The code `if (typeof displayCommentBar === "function")` is a safety check. Here's what it does:
 
     // 1. `typeof displayCommentBar`: This checks the type of the `displayCommentBar` variable.
@@ -129,14 +131,17 @@ const login = async () => {
     // By adding this check, we ensure that `displayCommentBar()` is only called when it actually exists, which is on the `details.html` page.
 
     closeModal("loginModal");
+    hideLoader(); // Hide loader after successful login
   } catch (error) {
     console.error("Error:", error);
+    hideLoader(); // Hide loader if there's an error
     if (messageContainer) {
       messageContainer.innerHTML = `<div class="alert alert-danger"><strong>Login Failed:</strong> An unexpected error occurred.</div>`;
     }
     setAlert("login failed", "danger");
     navBar();
     closeModal("loginModal");
+    hideLoader(); // Hide loader if there's an error
   }
 
   userInput.value = "";
@@ -165,6 +170,7 @@ const register = async () => {
     formData.append("email", email);
     formData.append("image", image);
     const url = "https://tarmeezacademy.com/api/v1/register";
+    showLoader(); // Show loader while registering
 
     const response = await axios.post(url, formData);
 
@@ -177,6 +183,8 @@ const register = async () => {
     setAlert(error.response.data.message, "danger");
     navBar();
     closeModal("registerModal");
+  } finally {
+    hideLoader(); // Hide loader after success or error
   }
 };
 
